@@ -1,21 +1,83 @@
 const ProblemReport = require("../models/problemReport.model");
 
+const crypto = require("crypto");
+
+const {
+    supabase,
+    supabaseBucket
+} = require("../config/supabase");
+
 const createProblemReport = async (req, res) => {
     try {
-        const report = await ProblemReport.create(req.body);
+        if (
+            !req.body.report_id ||
+            !req.body.report_type ||
+            !req.body.report_text
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "report_id, report_type and report_text are required"
+            });
+        }
 
-        res.status(201).json({
+        const attachments = [];
+
+        for (const file of req.files || []) {
+            const safeName = file.originalname
+                .replace(/[^a-zA-Z0-9._-]/g, "_")
+                .replace(/\s+/g, "_");
+
+            const uniqueName = `${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+
+            const filePath = `${req.body.report_id}/${uniqueName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from(supabaseBucket)
+                .upload(filePath, file.buffer, {
+                    contentType: file.mimetype,
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error("Supabase upload error:", uploadError);
+
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to upload attachment",
+                    error: uploadError.message
+                });
+            }
+
+            const { data: publicUrlData } = supabase.storage
+                .from(supabaseBucket)
+                .getPublicUrl(filePath);
+
+            attachments.push({
+                name: file.originalname,
+                type: file.mimetype,
+                size: file.size,
+                url: publicUrlData.publicUrl
+            });
+        }
+
+        const report = await ProblemReport.create({
+            ...req.body,
+            immediate_action: req.body.immediate_action || "",
+            attachments
+        });
+
+        return res.status(201).json({
             success: true,
             message: "Problem report submitted for review",
-            data: report,
+            data: report
         });
     } catch (error) {
         console.error("Create problem report error:", error.message);
 
-        res.status(400).json({
+        return res.status(500).json({
             success: false,
             message: "Failed to create problem report",
-            error: error.message,
+            error: error.message
         });
     }
 };

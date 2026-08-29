@@ -9,6 +9,17 @@ const problemReportSchema = new mongoose.Schema(
             index: true,
         },
 
+        report_type: {
+            type: String,
+            enum: [
+                "UA/UC",
+                "Near Miss",
+                "Incident",
+            ],
+            required: true,
+            index: true,
+        },
+
         source_type: {
             type: String,
             enum: ["OISD", "synthetic", "gold", "user_report"],
@@ -113,6 +124,11 @@ const problemReportSchema = new mongoose.Schema(
             type: String,
         },
 
+        immediate_action: {
+            type: String,
+            default: "",
+        },
+
         sif_potential: {
             type: Boolean,
             default: false,
@@ -172,6 +188,27 @@ const problemReportSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+
+        attachments: {
+            type: [
+                {
+                    name: {
+                        type: String,
+                    },
+                    url: {
+                        type: String,
+                    },
+                    type: {
+                        type: String,
+                    },
+                    size: {
+                        type: Number,
+                    },
+                },
+            ],
+            default: [],
+        },
+
         sif_score: {
             type: Number,
             default: null,
