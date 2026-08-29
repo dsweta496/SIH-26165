@@ -164,9 +164,8 @@ const problemReportSchema = new mongoose.Schema(
         },
 
         assigned_team: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Team",
-            default: null,
+            type: String,
+            default: null
         },
 
         resolved_at: {

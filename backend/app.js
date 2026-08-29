@@ -3,6 +3,10 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const problemReportRoutes = require("./routes/problemReport.route");
+const teamProposalRoutes = require("./routes/teamProposal.route");
+const authRoutes = require("./routes/auth.route");
+const authMiddleware = require("./middleware/auth.middleware");
+const roleMiddleware = require("./middleware/role.middleware");
 
 const app = express();
 
@@ -29,5 +33,9 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/reports", problemReportRoutes);
+
+app.use("/api/proposals", teamProposalRoutes);
+
+app.use("/api/auth", authRoutes);
 
 module.exports = app;
