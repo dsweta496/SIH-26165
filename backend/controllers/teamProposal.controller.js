@@ -2,6 +2,9 @@ const TeamProposal = require("../models/teamProposal.model");
 const ProblemReport = require("../models/problemReport.model");
 const Team = require("../models/team.model");
 const crypto = require("crypto");
+const {
+    createAuditLog,
+} = require("../utils/auditLogger");
 
 const TeamInvitation = require("../models/teamInvitation.model");
 
@@ -327,6 +330,19 @@ If you do not want to continue, you can simply ignore this email.
             }
         }
 
+        await createAuditLog({
+            actor_id: req.user.userId,
+            actor_role: req.user.role,
+            action: "proposal_accepted",
+            entity_type: "TeamProposal",
+            entity_id: proposal.proposal_id,
+            report_id: proposal.report_id,
+            proposal_id: proposal.proposal_id,
+            details: proposal.team_id
+                ? `Proposal accepted for team ${proposal.team_id}`
+                : "Guest team proposal accepted and invitation issued",
+        });
+
         return res.status(200).json({
             success: true,
             message: "Team proposal accepted and problem assigned",
@@ -377,6 +393,17 @@ const rejectTeamProposal = async (req, res) => {
         proposal.reviewed_at = new Date();
 
         await proposal.save();
+
+        await createAuditLog({
+            actor_id: req.user.userId,
+            actor_role: req.user.role,
+            action: "proposal_rejected",
+            entity_type: "TeamProposal",
+            entity_id: proposal.proposal_id,
+            report_id: proposal.report_id,
+            proposal_id: proposal.proposal_id,
+            details: admin_notes || "",
+        });
 
         res.status(200).json({
             success: true,

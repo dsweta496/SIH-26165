@@ -5,10 +5,9 @@ const helmet = require("helmet");
 const problemReportRoutes = require("./routes/problemReport.route");
 const teamProposalRoutes = require("./routes/teamProposal.route");
 const authRoutes = require("./routes/auth.route");
-const authMiddleware = require("./middleware/auth.middleware");
-const roleMiddleware = require("./middleware/role.middleware");
 const teamInvitationRoutes = require("./routes/teamInvitation.route");
 const solutionRoutes = require("./routes/solution.route");
+const adminRoutes = require("./routes/admin.route");
 
 const app = express();
 
@@ -43,5 +42,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/invitations", teamInvitationRoutes);
 
 app.use("/api/solutions", solutionRoutes);
+
+app.use("/api/admin", adminRoutes);
 
 module.exports = app;

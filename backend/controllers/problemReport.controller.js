@@ -7,6 +7,10 @@ const {
     supabaseBucket
 } = require("../config/supabase");
 
+const {
+    createAuditLog,
+} = require("../utils/auditLogger");
+
 const createProblemReport = async (req, res) => {
     try {
         if (
@@ -189,6 +193,19 @@ const reviewProblemReport = async (req, res) => {
         report.reviewer_notes = reviewer_notes || "";
 
         await report.save();
+
+        await createAuditLog({
+            actor_id: req.user.userId,
+            actor_role: req.user.role,
+            action:
+                review_status === "approved"
+                    ? "report_approved"
+                    : "report_rejected",
+            entity_type: "ProblemReport",
+            entity_id: report.report_id,
+            report_id: report.report_id,
+            details: reviewer_notes || "",
+        });
 
         res.status(200).json({
             success: true,

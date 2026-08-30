@@ -2,6 +2,10 @@ const Solution = require("../models/solution.model");
 const TeamProposal = require("../models/teamProposal.model");
 const ProblemReport = require("../models/problemReport.model");
 const Team = require("../models/team.model");
+const Review = require("../models/review.model");
+const {
+    createAuditLog,
+} = require("../utils/auditLogger");
 
 // CREATE SOLUTION
 
@@ -11,10 +15,11 @@ const createSolution = async (req, res) => {
             solution_id,
             proposal_id,
             report_id,
-            team_id,
             solution_text,
             attachments,
         } = req.body;
+
+        const team_id = req.user.team_id;
 
         if (
             !solution_id ||
@@ -130,6 +135,18 @@ const createSolution = async (req, res) => {
             submitted_at: new Date(),
         });
 
+        await createAuditLog({
+            actor_id: req.user.userId,
+            actor_role: req.user.role,
+            action: "solution_submitted",
+            entity_type: "Solution",
+            entity_id: solution.solution_id,
+            report_id: solution.report_id,
+            proposal_id: solution.proposal_id,
+            solution_id: solution.solution_id,
+            details: "New solution submitted for review",
+        });
+
         return res.status(201).json({
             success: true,
             message: "Solution submitted successfully",
@@ -222,6 +239,31 @@ const requestSolutionChanges = async (req, res) => {
 
         await solution.save();
 
+        await Review.create({
+            review_id: `REV-${Date.now()}`,
+            solution_id: solution.solution_id,
+            proposal_id: solution.proposal_id,
+            report_id: solution.report_id,
+            team_id: solution.team_id,
+            reviewer_id: req.user.userId,
+            decision: "changes_requested",
+            feedback: admin_feedback,
+            review_cycle: solution.review_cycle,
+            reviewed_at: new Date(),
+        });
+
+        await createAuditLog({
+            actor_id: req.user.userId,
+            actor_role: req.user.role,
+            action: "solution_changes_requested",
+            entity_type: "Solution",
+            entity_id: solution.solution_id,
+            report_id: solution.report_id,
+            proposal_id: solution.proposal_id,
+            solution_id: solution.solution_id,
+            details: admin_feedback,
+        }); s
+
         return res.status(200).json({
             success: true,
             message: "Changes requested from team",
@@ -284,6 +326,31 @@ const approveSolution = async (req, res) => {
 
         await solution.save();
 
+        await Review.create({
+            review_id: `REV-${Date.now()}`,
+            solution_id: solution.solution_id,
+            proposal_id: solution.proposal_id,
+            report_id: solution.report_id,
+            team_id: solution.team_id,
+            reviewer_id: req.user.userId,
+            decision: "approved",
+            feedback: solution.admin_feedback || "",
+            review_cycle: solution.review_cycle,
+            reviewed_at: new Date(),
+        });
+
+        await createAuditLog({
+            actor_id: req.user.userId,
+            actor_role: req.user.role,
+            action: "solution_approved",
+            entity_type: "Solution",
+            entity_id: solution.solution_id,
+            report_id: solution.report_id,
+            proposal_id: solution.proposal_id,
+            solution_id: solution.solution_id,
+            details: "Solution approved and problem resolved",
+        });
+
         report.case_status = "resolved";
         report.resolved_at = new Date();
 
@@ -339,6 +406,14 @@ const resubmitSolution = async (req, res) => {
             solution_id: solutionId,
         });
 
+        if (previousSolution.team_id !== req.user.team_id) {
+            return res.status(403).json({
+                success: false,
+                message:
+                    "You are not authorized to resubmit this solution",
+            });
+        }
+
         if (!previousSolution) {
             return res.status(404).json({
                 success: false,
@@ -381,6 +456,18 @@ const resubmitSolution = async (req, res) => {
             status: "pending_review",
             review_cycle: newCycle,
             submitted_at: new Date(),
+        });
+
+        await createAuditLog({
+            actor_id: req.user.userId,
+            actor_role: req.user.role,
+            action: "solution_resubmitted",
+            entity_type: "Solution",
+            entity_id: newSolution.solution_id,
+            report_id: newSolution.report_id,
+            proposal_id: newSolution.proposal_id,
+            solution_id: newSolution.solution_id,
+            details: `Solution resubmitted for review cycle ${newSolution.review_cycle}`,
         });
 
         return res.status(201).json({
