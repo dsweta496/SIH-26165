@@ -1,5 +1,11 @@
 const TeamProposal = require("../models/teamProposal.model");
 const ProblemReport = require("../models/problemReport.model");
+const Team = require("../models/team.model");
+const crypto = require("crypto");
+
+const TeamInvitation = require("../models/teamInvitation.model");
+
+const { sendEmail } = require("../services/email.service");
 
 const createTeamProposal = async (req, res) => {
     try {
@@ -11,6 +17,20 @@ const createTeamProposal = async (req, res) => {
             team_leader_email,
             solution_proposal,
         } = req.body;
+
+        if (
+            !proposal_id ||
+            !report_id ||
+            !team_name ||
+            !team_leader_email ||
+            !solution_proposal
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "proposal_id, report_id, team_name, team_leader_email and solution_proposal are required",
+            });
+        }
 
         const report = await ProblemReport.findOne({
             report_id,
@@ -26,14 +46,16 @@ const createTeamProposal = async (req, res) => {
         if (report.review_status !== "approved") {
             return res.status(400).json({
                 success: false,
-                message: "Proposal can only be submitted for an approved report",
+                message:
+                    "Proposal can only be submitted for an approved report",
             });
         }
 
         if (["resolved", "closed"].includes(report.case_status)) {
             return res.status(400).json({
                 success: false,
-                message: "This problem is no longer accepting proposals",
+                message:
+                    "This problem is no longer accepting proposals",
             });
         }
 
@@ -48,24 +70,70 @@ const createTeamProposal = async (req, res) => {
             });
         }
 
+        let proposalTeamId = null;
+
+        if (team_id) {
+            const team = await Team.findOne({
+                team_id,
+            });
+
+            if (!team) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Registered team not found",
+                });
+            }
+
+            const submittedEmail = team_leader_email.toLowerCase();
+            const registeredEmail = team.team_leader_email.toLowerCase();
+
+            const nameMatches = team.team_name === team_name;
+            const emailMatches = registeredEmail === submittedEmail;
+
+            if (!nameMatches || !emailMatches) {
+                const errors = {};
+
+                if (!nameMatches) {
+                    errors.team_name =
+                        "Team name does not match the registered team";
+                }
+
+                if (!emailMatches) {
+                    errors.team_leader_email =
+                        "Team leader email does not match the registered team";
+                }
+
+                return res.status(400).json({
+                    success: false,
+                    message: "Team details do not match the registered team",
+                    errors,
+                });
+            }
+
+            proposalTeamId = team.team_id;
+        }
+
         const proposal = await TeamProposal.create({
             proposal_id,
             report_id,
-            team_id,
+            team_id: proposalTeamId,
             team_name,
             team_leader_email,
             solution_proposal,
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: "Team proposal submitted successfully",
             data: proposal,
         });
     } catch (error) {
-        console.error("Create team proposal error:", error.message);
+        console.error(
+            "Create team proposal error:",
+            error.message
+        );
 
-        res.status(400).json({
+        return res.status(400).json({
             success: false,
             message: "Failed to create team proposal",
             error: error.message,
@@ -136,7 +204,8 @@ const acceptTeamProposal = async (req, res) => {
         if (acceptedProposal) {
             return res.status(409).json({
                 success: false,
-                message: "Another proposal has already been accepted for this problem",
+                message:
+                    "Another proposal has already been accepted for this problem",
             });
         }
 
@@ -146,9 +215,7 @@ const acceptTeamProposal = async (req, res) => {
         await proposal.save();
 
         report.case_status = "assigned";
-        report.assigned_team = proposal.team_id;
-        report.team_leader_email = proposal.team_leader_email;
-        report.assigned_at = new Date();
+        report.assigned_team = proposal.team_id || null;
 
         await report.save();
 
@@ -167,18 +234,115 @@ const acceptTeamProposal = async (req, res) => {
             }
         );
 
-        res.status(200).json({
+        let invitationSent = false;
+
+        if (!proposal.team_id) {
+            const existingInvitation = await TeamInvitation.findOne({
+                proposal_id: proposal.proposal_id,
+            });
+
+            if (!existingInvitation) {
+                const rawToken = crypto.randomBytes(32).toString("hex");
+
+                const tokenHash = crypto
+                    .createHash("sha256")
+                    .update(rawToken)
+                    .digest("hex");
+
+                const invitationId = `INV-${crypto
+                    .randomBytes(6)
+                    .toString("hex")
+                    .toUpperCase()}`;
+
+                const expiresAt = new Date(
+                    Date.now() + 24 * 60 * 60 * 1000
+                );
+
+                await TeamInvitation.create({
+                    invitation_id: invitationId,
+                    proposal_id: proposal.proposal_id,
+                    team_name: proposal.team_name,
+                    team_leader_email: proposal.team_leader_email,
+                    token_hash: tokenHash,
+                    expires_at: expiresAt,
+                });
+
+                const signupUrl =
+                    `${process.env.FRONTEND_URL}/team/signup?token=${rawToken}`;
+
+                await sendEmail({
+                    to: proposal.team_leader_email,
+                    subject:
+                        "Your OIL SIF team proposal has been accepted",
+                    text: `
+Your team proposal has been accepted.
+
+Team: ${proposal.team_name}
+Problem Report: ${proposal.report_id}
+
+Your team can now create an account and continue with the accepted proposal.
+
+Sign up here:
+${signupUrl}
+
+This invitation link expires in 24 hours.
+
+If you do not want to continue, you can simply ignore this email.
+                    `.trim(),
+                    html: `
+                        <h2>Your team proposal has been accepted</h2>
+
+                        <p>
+                            Your team proposal has been accepted by the administrator.
+                        </p>
+
+                        <p>
+                            <strong>Team:</strong> ${proposal.team_name}<br>
+                            <strong>Problem Report:</strong> ${proposal.report_id}
+                        </p>
+
+                        <p>
+                            Your team can now create an account and continue
+                            with the accepted proposal.
+                        </p>
+
+                        <p>
+                            <a href="${signupUrl}">
+                                Create your team account
+                            </a>
+                        </p>
+
+                        <p>
+                            This invitation link expires in 24 hours.
+                        </p>
+
+                        <p>
+                            If you do not want to continue,
+                            you can simply ignore this email.
+                        </p>
+                    `,
+                });
+
+                invitationSent = true;
+            }
+        }
+
+        return res.status(200).json({
             success: true,
             message: "Team proposal accepted and problem assigned",
             data: {
                 proposal,
                 report,
+                invitation_sent: invitationSent,
             },
         });
     } catch (error) {
-        console.error("Accept team proposal error:", error.message);
+        console.error(
+            "Accept team proposal error:",
+            error.message
+        );
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Failed to accept team proposal",
             error: error.message,

@@ -1,23 +1,18 @@
 const mongoose = require("mongoose");
 
-const teamProposalSchema = new mongoose.Schema(
+const teamInvitationSchema = new mongoose.Schema(
     {
-        proposal_id: {
+        invitation_id: {
             type: String,
             required: true,
             unique: true,
             trim: true,
         },
 
-        report_id: {
+        proposal_id: {
             type: String,
             required: true,
-            trim: true,
-        },
-
-        team_id: {
-            type: String,
-            default: null,
+            unique: true,
             trim: true,
         },
 
@@ -34,25 +29,23 @@ const teamProposalSchema = new mongoose.Schema(
             lowercase: true,
         },
 
-        solution_proposal: {
+        token_hash: {
             type: String,
             required: true,
-            trim: true,
+            unique: true,
         },
 
-        status: {
-            type: String,
-            enum: ["pending", "accepted", "rejected"],
-            default: "pending",
+        expires_at: {
+            type: Date,
+            required: true,
         },
 
-        admin_notes: {
-            type: String,
-            default: "",
-            trim: true,
+        used: {
+            type: Boolean,
+            default: false,
         },
 
-        reviewed_at: {
+        used_at: {
             type: Date,
             default: null,
         },
@@ -62,4 +55,7 @@ const teamProposalSchema = new mongoose.Schema(
     }
 );
 
-module.exports = mongoose.model("TeamProposal", teamProposalSchema);
+module.exports = mongoose.model(
+    "TeamInvitation",
+    teamInvitationSchema
+);

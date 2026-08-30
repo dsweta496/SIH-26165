@@ -7,6 +7,8 @@ const teamProposalRoutes = require("./routes/teamProposal.route");
 const authRoutes = require("./routes/auth.route");
 const authMiddleware = require("./middleware/auth.middleware");
 const roleMiddleware = require("./middleware/role.middleware");
+const teamInvitationRoutes = require("./routes/teamInvitation.route");
+const solutionRoutes = require("./routes/solution.route");
 
 const app = express();
 
@@ -37,5 +39,9 @@ app.use("/api/reports", problemReportRoutes);
 app.use("/api/proposals", teamProposalRoutes);
 
 app.use("/api/auth", authRoutes);
+
+app.use("/api/invitations", teamInvitationRoutes);
+
+app.use("/api/solutions", solutionRoutes);
 
 module.exports = app;
