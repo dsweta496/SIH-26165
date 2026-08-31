@@ -8,6 +8,10 @@ const authRoutes = require("./routes/auth.route");
 const teamInvitationRoutes = require("./routes/teamInvitation.route");
 const solutionRoutes = require("./routes/solution.route");
 const adminRoutes = require("./routes/admin.route");
+const dashboardRoutes = require("./routes/dashboard.route");
+const mlRoutes = require("./routes/ml.route");
+const mlReviewRoutes = require("./routes/mlReview.route");
+const exportRoutes = require("./routes/export.route");
 
 const app = express();
 
@@ -44,5 +48,13 @@ app.use("/api/invitations", teamInvitationRoutes);
 app.use("/api/solutions", solutionRoutes);
 
 app.use("/api/admin", adminRoutes);
+
+app.use("/api/dashboard", dashboardRoutes);
+
+app.use("/api/ml", mlRoutes);
+
+app.use("/api/ml", mlReviewRoutes);
+
+app.use("/api/export", exportRoutes);
 
 module.exports = app;

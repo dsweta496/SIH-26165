@@ -7,14 +7,33 @@ const {
   rejectTeamProposal,
 } = require("../controllers/teamProposal.controller");
 
+const authMiddleware = require("../middleware/auth.middleware");
+const roleMiddleware = require("../middleware/role.middleware");
+
 const router = express.Router();
 
 router.post("/", createTeamProposal);
 
-router.get("/report/:reportId", getProposalsForReport);
+router.get(
+    "/report/:reportId",
+    authMiddleware,
+    roleMiddleware("admin"),
+    getProposalsForReport
+);
 
-router.patch("/:proposalId/accept", acceptTeamProposal);
 
-router.patch("/:proposalId/reject", rejectTeamProposal);
+router.patch(
+    "/:proposalId/accept",
+    authMiddleware,
+    roleMiddleware("admin"),
+    acceptTeamProposal
+);
+
+router.patch(
+    "/:proposalId/reject",
+    authMiddleware,
+    roleMiddleware("admin"),
+    rejectTeamProposal
+);
 
 module.exports = router;

@@ -2,12 +2,10 @@ const express = require("express");
 
 const {
     createProblemReport,
-    getDashboardStatistics,
     getProblemReports,
     getPendingReports,
     getProblemReportById,
     reviewProblemReport,
-    getDistressRanking,
 } = require("../controllers/problemReport.controller");
 
 const authMiddleware = require("../middleware/auth.middleware");
@@ -37,10 +35,6 @@ router.patch(
     roleMiddleware("admin"),
     reviewProblemReport
 );
-
-router.get("/ranking/distress", getDistressRanking);
-
-router.get("/statistics/dashboard", getDashboardStatistics);
 
 router.get("/:reportId", getProblemReportById);
 

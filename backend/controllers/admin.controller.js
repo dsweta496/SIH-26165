@@ -3,9 +3,7 @@ const TeamProposal = require("../models/teamProposal.model");
 const Solution = require("../models/solution.model");
 
 
-// ==========================================
 // ADMIN OVERVIEW
-// ==========================================
 
 const getAdminOverview = async (req, res) => {
     try {
@@ -98,9 +96,7 @@ const getAdminOverview = async (req, res) => {
 };
 
 
-// ==========================================
 // ADMIN REVIEW QUEUE
-// ==========================================
 
 const getAdminReviewQueue = async (req, res) => {
     try {
@@ -163,9 +159,7 @@ const getAdminReviewQueue = async (req, res) => {
 };
 
 
-// ==========================================
 // ADMIN — ACTIVE CASES
-// ==========================================
 
 const getActiveCases = async (req, res) => {
     try {
@@ -198,9 +192,7 @@ const getActiveCases = async (req, res) => {
 };
 
 
-// ==========================================
 // ADMIN — PENDING SOLUTIONS
-// ==========================================
 
 const getPendingSolutions = async (req, res) => {
     try {
