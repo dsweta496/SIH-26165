@@ -165,11 +165,13 @@ const getActiveCases = async (req, res) => {
     try {
         const reports = await ProblemReport.find({
             review_status: "approved",
-            case_status: {
-                $in: ["active", "assigned"],
-            },
+            case_status: "active",
+            assigned_team: null,
         })
-            .sort({ sif_score: -1, createdAt: -1 })
+            .sort({
+                sif_score: -1,
+                createdAt: -1,
+            })
             .lean();
 
         return res.status(200).json({
@@ -222,10 +224,81 @@ const getPendingSolutions = async (req, res) => {
     }
 };
 
+// ADMIN — RESOLVED CASE HISTORY
+
+const getResolvedCases = async (req, res) => {
+    try {
+        const reports = await ProblemReport.find({
+            case_status: "resolved",
+        })
+            .sort({
+                resolved_at: -1,
+                createdAt: -1,
+            })
+            .lean();
+
+        const reportIds = reports.map(
+            (report) => report.report_id
+        );
+
+        const solutions = await Solution.find({
+            report_id: {
+                $in: reportIds,
+            },
+        })
+            .sort({
+                submitted_at: -1,
+                createdAt: -1,
+            })
+            .lean();
+
+        const solutionsByReport = {};
+
+        for (const solution of solutions) {
+
+            if (!solutionsByReport[solution.report_id]) {
+                solutionsByReport[solution.report_id] = [];
+            }
+
+            solutionsByReport[solution.report_id].push(
+                solution
+            );
+        }
+
+        const data = reports.map((report) => ({
+            ...report,
+
+            solutions:
+                solutionsByReport[report.report_id] || [],
+        }));
+
+        return res.status(200).json({
+            success: true,
+            count: data.length,
+            data,
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Get resolved cases error:",
+            error.message
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch resolved cases",
+            error: error.message,
+        });
+    }
+};
+
+
 
 module.exports = {
     getAdminOverview,
     getAdminReviewQueue,
     getActiveCases,
     getPendingSolutions,
+    getResolvedCases
 };

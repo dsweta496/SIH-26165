@@ -9,10 +9,11 @@ const {
 
 const authMiddleware = require("../middleware/auth.middleware");
 const roleMiddleware = require("../middleware/role.middleware");
+const upload = require("../middleware/upload.middleware");
 
 const router = express.Router();
 
-router.post("/", createTeamProposal);
+router.post("/", upload.array("attachments", 5), createTeamProposal);
 
 router.get(
     "/report/:reportId",

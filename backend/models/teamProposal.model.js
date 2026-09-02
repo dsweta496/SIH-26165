@@ -40,6 +40,26 @@ const teamProposalSchema = new mongoose.Schema(
             trim: true,
         },
 
+        attachments: {
+            type: [
+                {
+                    name: {
+                        type: String,
+                    },
+                    url: {
+                        type: String,
+                    },
+                    type: {
+                        type: String,
+                    },
+                    size: {
+                        type: Number,
+                    },
+                },
+            ],
+            default: [],
+        },
+
         status: {
             type: String,
             enum: ["pending", "accepted", "rejected"],

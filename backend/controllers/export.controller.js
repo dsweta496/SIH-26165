@@ -207,7 +207,86 @@ const exportReportsCSV = async (req, res) => {
     }
 };
 
+// EXPORT RESOLVED CASE HISTORY CSV
+
+const exportResolvedCasesCSV = async (req, res) => {
+    try {
+        const reports = await ProblemReport.find({
+            case_status: "resolved",
+        })
+            .sort({
+                resolved_at: -1,
+                createdAt: -1,
+            })
+            .lean();
+
+        const headers = [
+            "report_id",
+            "site",
+            "activity",
+            "location",
+            "equipment",
+            "sif_potential",
+            "sif_level",
+            "assigned_team",
+            "case_status",
+            "resolved_at",
+        ];
+
+        const rows = [headers];
+
+        for (const report of reports) {
+
+            rows.push([
+                report.report_id,
+                report.site,
+                report.activity,
+                report.location,
+                report.equipment,
+                report.sif_potential,
+                report.sif_level,
+                report.assigned_team,
+                report.case_status,
+                report.resolved_at,
+            ].map(escapeCSV));
+        }
+
+        const csv = rows
+            .map((row) => row.join(","))
+            .join("\r\n");
+
+        const filename =
+            `sih26165-resolved-case-history-${Date.now()}.csv`;
+
+        res.setHeader(
+            "Content-Type",
+            "text/csv; charset=utf-8"
+        );
+
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${filename}"`
+        );
+
+        return res.status(200).send(csv);
+
+    } catch (error) {
+
+        console.error(
+            "Resolved case CSV export error:",
+            error.message
+        );
+
+        return res.status(500).json({
+            success: false,
+            message:
+                "Failed to export resolved case history",
+            error: error.message,
+        });
+    }
+};
 
 module.exports = {
     exportReportsCSV,
+    exportResolvedCasesCSV
 };

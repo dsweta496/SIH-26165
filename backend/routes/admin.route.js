@@ -5,6 +5,7 @@ const {
     getAdminReviewQueue,
     getActiveCases,
     getPendingSolutions,
+    getResolvedCases
 } = require("../controllers/admin.controller");
 
 const authMiddleware = require("../middleware/auth.middleware");
@@ -60,5 +61,11 @@ router.get(
     getPendingSolutions
 );
 
+router.get(
+    "/resolved-cases",
+    authMiddleware,
+    roleMiddleware("admin"),
+    getResolvedCases
+);
 
 module.exports = router;

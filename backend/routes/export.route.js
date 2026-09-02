@@ -1,7 +1,7 @@
 const express = require("express");
 
 const {
-    exportReportsCSV,
+    exportReportsCSV,exportResolvedCasesCSV
 } = require("../controllers/export.controller");
 
 const authMiddleware = require("../middleware/auth.middleware");
@@ -16,6 +16,15 @@ router.get(
     authMiddleware,
     roleMiddleware("admin"),
     exportReportsCSV
+);
+
+// ADMIN — EXPORT RESOLVED CASE HISTORY
+
+router.get(
+    "/resolved-cases/csv",
+    authMiddleware,
+    roleMiddleware("admin"),
+    exportResolvedCasesCSV
 );
 
 

@@ -3,6 +3,10 @@ const ProblemReport = require("../models/problemReport.model");
 const Team = require("../models/team.model");
 const crypto = require("crypto");
 const {
+    supabase,
+    supabaseBucket,
+} = require("../config/supabase");
+const {
     createAuditLog,
 } = require("../utils/auditLogger");
 
@@ -54,11 +58,17 @@ const createTeamProposal = async (req, res) => {
             });
         }
 
-        if (["resolved", "closed"].includes(report.case_status)) {
+        if (report.case_status !== "active") {
             return res.status(400).json({
                 success: false,
-                message:
-                    "This problem is no longer accepting proposals",
+                message: "Team proposals can only be submitted for active cases",
+            });
+        }
+
+        if (report.assigned_team) {
+            return res.status(400).json({
+                success: false,
+                message: "This problem is already assigned to a team",
             });
         }
 
@@ -116,6 +126,51 @@ const createTeamProposal = async (req, res) => {
             proposalTeamId = team.team_id;
         }
 
+        const attachments = [];
+
+        for (const file of req.files || []) {
+            const safeName = file.originalname
+                .replace(/[^a-zA-Z0-9._-]/g, "_")
+                .replace(/\s+/g, "_");
+
+            const uniqueName = `${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+
+            const filePath = `team-proposals/${proposal_id}/${uniqueName}`;
+
+            const { error: uploadError } =
+                await supabase.storage
+                    .from(supabaseBucket)
+                    .upload(filePath, file.buffer, {
+                        contentType: file.mimetype,
+                        upsert: false,
+                    });
+
+            if (uploadError) {
+                console.error(
+                    "Supabase proposal upload error:",
+                    uploadError
+                );
+
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to upload proposal attachment",
+                    error: uploadError.message,
+                });
+            }
+
+            const { data: publicUrlData } =
+                supabase.storage
+                    .from(supabaseBucket)
+                    .getPublicUrl(filePath);
+
+            attachments.push({
+                name: file.originalname,
+                type: file.mimetype,
+                size: file.size,
+                url: publicUrlData.publicUrl,
+            });
+        }
+
         const proposal = await TeamProposal.create({
             proposal_id,
             report_id,
@@ -123,6 +178,7 @@ const createTeamProposal = async (req, res) => {
             team_name,
             team_leader_email,
             solution_proposal,
+            attachments,
         });
 
         return res.status(201).json({
