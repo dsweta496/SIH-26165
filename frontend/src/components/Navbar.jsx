@@ -205,7 +205,7 @@ function Navbar({ variant = "public" }) {
             className="
                 sticky
                 top-0
-                z-50
+                z-100
                 w-full
                 border-b
                 border-[#dce4de]

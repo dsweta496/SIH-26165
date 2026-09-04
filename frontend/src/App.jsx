@@ -14,6 +14,9 @@ import AdminPastCaseHistory from "./pages/admin/AdminPastCaseHistory";
 import TeamProposal from "./pages/public/TeamProposal";
 import TeamSignup from "./pages/public/TeamSignup";
 import CreateProblemReport from "./pages/public/CreateProblemReport";
+import TeamDashboard from "./pages/team/TeamDashboard";
+import CurrentCases from "./pages/team/CurrentCases";
+import PastCases from "./pages/team/PastCases";
 
 function App() {
     return (
@@ -55,6 +58,18 @@ function App() {
                 <Route
                     path="/report"
                     element={<CreateProblemReport />}
+                />
+                <Route
+                    path="/team"
+                    element={<TeamDashboard />}
+                />
+                <Route
+                    path="/team/cases"
+                    element={<CurrentCases />}
+                />
+                <Route
+                    path="/team/past-cases"
+                    element={<PastCases />}
                 />
             </Routes>
         </BrowserRouter>

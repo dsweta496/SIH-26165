@@ -1,9 +1,17 @@
 import api from "./axios";
 
 
-/* =========================================================
-   GET SOLUTIONS FOR A PROPOSAL
-========================================================= */
+export const createSolution =
+    async (solutionData) => {
+
+        const response = await api.post(
+            "/solutions",
+            solutionData
+        );
+
+        return response.data;
+    };
+
 
 export const getSolutionsForProposal =
     async (proposalId) => {
@@ -15,10 +23,6 @@ export const getSolutionsForProposal =
         return response.data;
     };
 
-
-/* =========================================================
-   REQUEST CHANGES
-========================================================= */
 
 export const requestSolutionChanges =
     async (
@@ -37,15 +41,26 @@ export const requestSolutionChanges =
     };
 
 
-/* =========================================================
-   APPROVE SOLUTION
-========================================================= */
-
 export const approveSolution =
     async (solutionId) => {
 
         const response = await api.patch(
             `/solutions/${solutionId}/approve`
+        );
+
+        return response.data;
+    };
+
+
+export const resubmitSolution =
+    async (
+        solutionId,
+        solutionData
+    ) => {
+
+        const response = await api.post(
+            `/solutions/${solutionId}/resubmit`,
+            solutionData
         );
 
         return response.data;

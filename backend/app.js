@@ -12,7 +12,7 @@ const dashboardRoutes = require("./routes/dashboard.route");
 const mlRoutes = require("./routes/ml.route");
 const mlReviewRoutes = require("./routes/mlReview.route");
 const exportRoutes = require("./routes/export.route");
-
+const teamRoutes = require("./routes/team.route");
 const app = express();
 
 // Security
@@ -56,5 +56,7 @@ app.use("/api/ml", mlRoutes);
 app.use("/api/ml", mlReviewRoutes);
 
 app.use("/api/export", exportRoutes);
+
+app.use("/api/team", teamRoutes);
 
 module.exports = app;

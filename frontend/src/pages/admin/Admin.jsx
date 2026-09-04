@@ -227,10 +227,7 @@ function Admin() {
         overview?.solutions || {};
 
 
-    const reviewQueue =
-        (reports.pending_review || 0) +
-        (proposals.pending || 0) +
-        (solutions.pending_review || 0);
+    const reviewQueue = reports.pending_review || 0;
 
 
     /* =========================================================
@@ -458,7 +455,9 @@ function Admin() {
 
                             <button
                                 type="button"
-                                                            
+                                onClick={() =>
+                                    navigate("/admin/history")
+                                }                                                            
                                 className="
             group
 
@@ -516,7 +515,7 @@ function Admin() {
                 tracking-[-0.06em]
             "
                                 >
-                                    {reports.total ?? 0}
+                                    {(reports.total ?? 0)}
                                 </strong>
 
                                 <p
@@ -532,6 +531,26 @@ function Admin() {
                                     awaiting review
                                 </p>
 
+                                <span
+                                    className="
+                block
+
+                mt-4
+
+                text-[#087542]
+
+                text-[9px]
+                font-extrabold
+
+                opacity-0
+
+                transition
+
+                group-hover:opacity-100
+            "
+                                >
+                                    View all resolved cases →
+                                </span>
 
                             </button>
 
@@ -720,7 +739,7 @@ function Admin() {
                 text-[10px]
             "
                                 >
-                                    Items requiring action
+                                    Reports awaiting review 
                                 </p>
 
                                 <span
@@ -827,7 +846,7 @@ function Admin() {
                 text-[10px]
             "
                                 >
-                                    Awaiting admin review
+                                    Solutions awaiting approval
                                 </p>
 
                                 <span

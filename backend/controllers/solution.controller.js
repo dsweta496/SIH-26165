@@ -3,11 +3,75 @@ const TeamProposal = require("../models/teamProposal.model");
 const ProblemReport = require("../models/problemReport.model");
 const Team = require("../models/team.model");
 const Review = require("../models/review.model");
+const crypto = require("crypto");
+
+const {
+    supabase,
+    supabaseBucket,
+} = require("../config/supabase");
+
 const {
     createAuditLog,
 } = require("../utils/auditLogger");
 
 // CREATE SOLUTION
+
+const uploadSolutionAttachments = async (
+    files,
+    reportId,
+    solutionId
+) => {
+    const attachments = [];
+
+    for (const file of files || []) {
+        const safeName = file.originalname
+            .replace(/[^a-zA-Z0-9._-]/g, "_")
+            .replace(/\s+/g, "_");
+
+        const uniqueName =
+            `${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+
+        const filePath =
+            `solutions/${reportId}/${solutionId}/${uniqueName}`;
+
+        const { error: uploadError } =
+            await supabase.storage
+                .from(supabaseBucket)
+                .upload(
+                    filePath,
+                    file.buffer,
+                    {
+                        contentType: file.mimetype,
+                        upsert: false,
+                    }
+                );
+
+        if (uploadError) {
+            console.error(
+                "Supabase solution upload error:",
+                uploadError
+            );
+
+            throw new Error(
+                `Failed to upload attachment: ${uploadError.message}`
+            );
+        }
+
+        const { data: publicUrlData } =
+            supabase.storage
+                .from(supabaseBucket)
+                .getPublicUrl(filePath);
+
+        attachments.push({
+            name: file.originalname,
+            type: file.mimetype,
+            size: file.size,
+            url: publicUrlData.publicUrl,
+        });
+    }
+
+    return attachments;
+};
 
 const createSolution = async (req, res) => {
     try {
@@ -16,7 +80,6 @@ const createSolution = async (req, res) => {
             proposal_id,
             report_id,
             solution_text,
-            attachments,
         } = req.body;
 
         const team_id = req.user.team_id;
@@ -123,13 +186,20 @@ const createSolution = async (req, res) => {
             });
         }
 
+        const uploadedAttachments =
+            await uploadSolutionAttachments(
+                req.files,
+                report_id,
+                solution_id
+            );
+
         const solution = await Solution.create({
             solution_id,
             proposal_id,
             report_id,
             team_id,
             solution_text,
-            attachments: attachments || [],
+            attachments: uploadedAttachments,
             status: "pending_review",
             review_cycle: 1,
             submitted_at: new Date(),
@@ -262,7 +332,7 @@ const requestSolutionChanges = async (req, res) => {
             proposal_id: solution.proposal_id,
             solution_id: solution.solution_id,
             details: admin_feedback,
-        }); s
+        });
 
         return res.status(200).json({
             success: true,
@@ -390,7 +460,6 @@ const resubmitSolution = async (req, res) => {
         const {
             solution_id,
             solution_text,
-            attachments,
         } = req.body;
 
         if (!solution_id || !solution_text) {
@@ -406,18 +475,18 @@ const resubmitSolution = async (req, res) => {
             solution_id: solutionId,
         });
 
+        if (!previousSolution) {
+            return res.status(404).json({
+                success: false,
+                message: "Previous solution not found",
+            });
+        }
+
         if (previousSolution.team_id !== req.user.team_id) {
             return res.status(403).json({
                 success: false,
                 message:
                     "You are not authorized to resubmit this solution",
-            });
-        }
-
-        if (!previousSolution) {
-            return res.status(404).json({
-                success: false,
-                message: "Previous solution not found",
             });
         }
 
@@ -446,13 +515,20 @@ const resubmitSolution = async (req, res) => {
         const newCycle =
             previousSolution.review_cycle + 1;
 
+        const uploadedAttachments =
+            await uploadSolutionAttachments(
+                req.files,
+                previousSolution.report_id,
+                solution_id
+            );
+
         const newSolution = await Solution.create({
             solution_id,
             proposal_id: previousSolution.proposal_id,
             report_id: previousSolution.report_id,
             team_id: previousSolution.team_id,
             solution_text,
-            attachments: attachments || [],
+            attachments: uploadedAttachments,
             status: "pending_review",
             review_cycle: newCycle,
             submitted_at: new Date(),

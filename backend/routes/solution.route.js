@@ -10,21 +10,17 @@ const {
 
 const authMiddleware = require("../middleware/auth.middleware");
 const roleMiddleware = require("../middleware/role.middleware");
+const upload = require("../middleware/upload.middleware");
 
 const router = express.Router();
-
-
-// TEAM — SUBMIT SOLUTION
 
 router.post(
     "/",
     authMiddleware,
     roleMiddleware("team"),
+    upload.array("attachments", 5),
     createSolution
 );
-
-
-// ADMIN — VIEW SOLUTION HISTORY
 
 router.get(
     "/proposal/:proposalId",
@@ -33,18 +29,12 @@ router.get(
     getSolutionsForProposal
 );
 
-
-// ADMIN — REQUEST CHANGES
-
 router.patch(
     "/:solutionId/request-changes",
     authMiddleware,
     roleMiddleware("admin"),
     requestSolutionChanges
 );
-
-
-// ADMIN — APPROVE SOLUTION
 
 router.patch(
     "/:solutionId/approve",
@@ -53,15 +43,12 @@ router.patch(
     approveSolution
 );
 
-
-// TEAM — RESUBMIT
-
 router.post(
     "/:solutionId/resubmit",
     authMiddleware,
     roleMiddleware("team"),
+    upload.array("attachments", 5),
     resubmitSolution
 );
-
 
 module.exports = router;
