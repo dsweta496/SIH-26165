@@ -60,6 +60,85 @@ const getStatusLabel = (status) => {
         .toUpperCase();
 };
 
+const AttachmentList = ({ attachments = [], label = "Attachments" }) => {
+    if (!attachments?.length) {
+        return null;
+    }
+
+    return (
+        <div className="mt-5">
+            <p className="text-[#718078] text-[9px] font-extrabold tracking-[0.12em]">
+                {label}
+            </p>
+
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {attachments.map((attachment, index) => (
+                    <a
+                        key={
+                            attachment.url ||
+                            `${attachment.name}-${index}`
+                        }
+                        href={attachment.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="
+                            flex
+                            items-center
+                            gap-3
+                            p-3
+                            rounded-[5px]
+                            border
+                            border-[#dce4de]
+                            bg-[#f7faf8]
+                            hover:bg-[#edf4ef]
+                            hover:border-[#b9c9be]
+                            transition
+                        "
+                    >
+                        <div
+                            className="
+                                w-9
+                                h-9
+                                shrink-0
+                                flex
+                                items-center
+                                justify-center
+                                rounded-[4px]
+                                bg-white
+                                border
+                                border-[#dce4de]
+                                text-[#087542]
+                                text-sm
+                                font-extrabold
+                            "
+                        >
+                            ↗
+                        </div>
+
+                        <div className="min-w-0">
+                            <p className="text-[#33423a] text-xs font-bold truncate">
+                                {attachment.name || "Attachment"}
+                            </p>
+
+                            <p className="mt-1 text-[#8a958e] text-[9px]">
+                                {attachment.type || "File"}
+                                {attachment.size
+                                    ? ` · ${Math.max(
+                                        1,
+                                        Math.round(
+                                            attachment.size / 1024
+                                        )
+                                    )} KB`
+                                    : ""}
+                            </p>
+                        </div>
+                    </a>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 
 const TeamDashboard = () => {
     const navigate = useNavigate();
@@ -211,6 +290,15 @@ const TeamDashboard = () => {
     const latestResolved =
         resolvedCases.length > 0
             ? resolvedCases[0]
+            : null;
+
+    const latestSolution =
+        caseDetails?.solutions?.length
+            ? [...caseDetails.solutions].sort(
+                (a, b) =>
+                    (b.review_cycle ?? 0) -
+                    (a.review_cycle ?? 0)
+            )[0]
             : null;
 
 
@@ -624,6 +712,10 @@ const TeamDashboard = () => {
                                         {caseDetails.report?.report_text ||
                                             "No description available."}
                                     </p>
+                                    <AttachmentList
+                                        attachments={caseDetails.report?.attachments}
+                                        label="ORIGINAL EVIDENCE"
+                                    />
 
                                 </div>
 
@@ -687,6 +779,11 @@ const TeamDashboard = () => {
                                                             "No proposal description available."}
                                                     </p>
 
+                                                    <AttachmentList
+                                                        attachments={caseDetails.proposal.attachments}
+                                                        label="PROPOSAL DOCUMENTS"
+                                                    />
+
                                                 </div>
 
                                             ) : (
@@ -723,13 +820,16 @@ const TeamDashboard = () => {
                                                 </div>
 
 
-                                                {caseDetails.report?.case_status === "assigned" && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setShowSolutionModal(true)
-                                                        }
-                                                        className="
+                                                {caseDetails.report?.case_status === "assigned" &&
+                                                    (!latestSolution ||
+                                                        latestSolution.status ===
+                                                        "changes_requested") && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setShowSolutionModal(true)
+                                                            }
+                                                            className="
                                                            px-4
                                                            py-2.5
                                                    
@@ -743,10 +843,10 @@ const TeamDashboard = () => {
                                                            hover:bg-[#075f36]
                                                            transition
                                                        "
-                                                    >
-                                                        + Submit Solution
-                                                    </button>
-                                                )}
+                                                        >
+                                                            + Submit Solution
+                                                        </button>
+                                                    )}
 
                                             </div>
 
@@ -781,6 +881,11 @@ const TeamDashboard = () => {
                                                                 <p className="mt-4 text-[#53635a] text-sm whitespace-pre-wrap">
                                                                     {solution.solution_text}
                                                                 </p>
+
+                                                                <AttachmentList
+                                                                    attachments={solution.attachments}
+                                                                    label={`CYCLE ${solution.review_cycle} DOCUMENTS`}
+                                                                />
 
 
                                                                 {solution.admin_feedback && (
@@ -851,6 +956,7 @@ const TeamDashboard = () => {
                 proposal={caseDetails?.proposal}
                 report={caseDetails?.report}
                 team={team}
+                latestSolution={latestSolution}
                 onSuccess={() =>
                     openCaseDialog(selectedCase)
                 }

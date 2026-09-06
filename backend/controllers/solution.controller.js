@@ -485,8 +485,7 @@ const resubmitSolution = async (req, res) => {
         if (previousSolution.team_id !== req.user.team_id) {
             return res.status(403).json({
                 success: false,
-                message:
-                    "You are not authorized to resubmit this solution",
+                message: "You are not authorized to resubmit this solution",
             });
         }
 

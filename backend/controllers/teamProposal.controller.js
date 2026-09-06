@@ -97,11 +97,27 @@ const createTeamProposal = async (req, res) => {
                 });
             }
 
-            const submittedEmail = team_leader_email.toLowerCase();
-            const registeredEmail = team.team_leader_email.toLowerCase();
+            const submittedEmail = team_leader_email
+                .trim()
+                .toLowerCase();
 
-            const nameMatches = team.team_name === team_name;
-            const emailMatches = registeredEmail === submittedEmail;
+            const registeredEmail = team.team_leader_email
+                .trim()
+                .toLowerCase();
+
+            const submittedTeamName = team_name
+                .trim()
+                .toLowerCase();
+
+            const registeredTeamName = team.team_name
+                .trim()
+                .toLowerCase();
+
+            const nameMatches =
+                registeredTeamName === submittedTeamName;
+
+            const emailMatches =
+                registeredEmail === submittedEmail;
 
             if (!nameMatches || !emailMatches) {
                 const errors = {};
@@ -116,9 +132,18 @@ const createTeamProposal = async (req, res) => {
                         "Team leader email does not match the registered team";
                 }
 
+                console.log("TEAM PROPOSAL VALIDATION DEBUG:", {
+                    team_id,
+                    registeredTeamName: team.team_name,
+                    submittedTeamName: team_name,
+                    registeredEmail: team.team_leader_email,
+                    submittedEmail: team_leader_email,
+                });
+
                 return res.status(400).json({
                     success: false,
-                    message: "Team details do not match the registered team",
+                    message:
+                        "Team details do not match the registered team",
                     errors,
                 });
             }

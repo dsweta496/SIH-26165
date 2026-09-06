@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 
-import { createSolution } from "../api/solution.api";
-
+import {
+    createSolution,
+    resubmitSolution,
+} from "../api/solution.api";
 
 const generateSolutionId = () => {
     const random = Math.random()
@@ -12,16 +14,15 @@ const generateSolutionId = () => {
     return `SOL-${random}`;
 };
 
-
 const SubmitSolutionModal = ({
     open,
     onClose,
     proposal,
     report,
     team,
+    latestSolution,
     onSuccess,
 }) => {
-
     const [solutionText, setSolutionText] =
         useState("");
 
@@ -34,14 +35,15 @@ const SubmitSolutionModal = ({
     const [error, setError] =
         useState("");
 
-
     if (!open) {
         return null;
     }
 
+    const isResubmission =
+        latestSolution?.status ===
+        "changes_requested";
 
     const handleFileChange = (event) => {
-
         const selectedFiles =
             Array.from(event.target.files || []);
 
@@ -55,6 +57,7 @@ const SubmitSolutionModal = ({
             );
 
             event.target.value = "";
+
             return;
         }
 
@@ -68,9 +71,7 @@ const SubmitSolutionModal = ({
         event.target.value = "";
     };
 
-
     const removeAttachment = (indexToRemove) => {
-
         setAttachments((current) =>
             current.filter(
                 (_, index) =>
@@ -79,36 +80,66 @@ const SubmitSolutionModal = ({
         );
     };
 
+    const resetForm = () => {
+        setSolutionText("");
+        setAttachments([]);
+        setError("");
+    };
+
+    const handleClose = () => {
+        if (submitting) {
+            return;
+        }
+
+        resetForm();
+        onClose();
+    };
 
     const handleSubmit = async (event) => {
-
         event.preventDefault();
 
-        try {
+        if (submitting) {
+            return;
+        }
 
+        try {
             setSubmitting(true);
             setError("");
 
-            if (
-                !proposal ||
-                !report ||
-                !team
-            ) {
+            if (!proposal || !report || !team) {
                 setError(
                     "Missing proposal, report or team information."
                 );
                 return;
             }
 
-            const solutionId =
-                generateSolutionId();
+            /*
+             * A resubmission MUST have the previous
+             * solution's solution_id.
+             */
+            if (
+                isResubmission &&
+                !latestSolution?.solution_id
+            ) {
+                setError(
+                    "Previous solution information is missing. Please refresh the case and try again."
+                );
 
-            const formData =
-                new FormData();
+                return;
+            }
 
+            const formData = new FormData();
+
+            /*
+             * Every submission gets a NEW solution ID.
+             *
+             * For a resubmission, the previous solution_id
+             * is used only in the URL. The backend also
+             * requires the NEW solution_id in req.body.
+             */
             formData.append(
                 "solution_id",
-                solutionId
+                generateSolutionId()
             );
 
             formData.append(
@@ -128,46 +159,63 @@ const SubmitSolutionModal = ({
 
             formData.append(
                 "solution_text",
-                solutionText
+                solutionText.trim()
             );
 
             attachments.forEach((file) => {
                 formData.append(
                     "attachments",
-                    file
+                    file,
+                    file.name
                 );
             });
 
-            await createSolution(formData);
+            /*
+             * CYCLE 2+
+             *
+             * If the latest solution was sent back
+             * for changes, resubmit against THAT
+             * solution ID.
+             */
+            if (isResubmission) {
+                await resubmitSolution(
+                    latestSolution.solution_id,
+                    formData
+                );
+            } else {
+                /*
+                 * CYCLE 1
+                 */
+                await createSolution(formData);
+            }
 
+            /*
+             * Let the parent refresh the case /
+             * solution list.
+             */
             if (onSuccess) {
                 await onSuccess();
             }
 
-            setSolutionText("");
-            setAttachments([]);
-
+            resetForm();
             onClose();
-
         } catch (err) {
-
-            console.error(err);
+            console.error(
+                "Solution submission error:",
+                err
+            );
 
             setError(
                 err?.response?.data?.message ||
-                "Failed to submit solution."
+                    err?.response?.data?.error ||
+                    "Failed to submit solution."
             );
-
         } finally {
-
             setSubmitting(false);
-
         }
     };
 
-
     return (
-
         <div
             className="
                 fixed
@@ -180,7 +228,6 @@ const SubmitSolutionModal = ({
                 bg-black/40
             "
         >
-
             <div
                 className="
                     w-full
@@ -192,7 +239,6 @@ const SubmitSolutionModal = ({
                     shadow-[0_25px_70px_rgba(0,0,0,0.2)]
                 "
             >
-
                 <div
                     className="
                         flex
@@ -203,34 +249,47 @@ const SubmitSolutionModal = ({
                         border-b
                     "
                 >
+                    <div>
+                        <h2
+                            className="
+                                text-lg
+                                font-extrabold
+                                text-[#17211b]
+                            "
+                        >
+                            {isResubmission
+                                ? "Resubmit Solution"
+                                : "Submit Solution"}
+                        </h2>
 
-                    <h2
-                        className="
-                            text-lg
-                            font-extrabold
-                            text-[#17211b]
-                        "
-                    >
-                        Submit Solution
-                    </h2>
+                        {isResubmission && (
+                            <p
+                                className="
+                                    mt-1
+                                    text-xs
+                                    text-[#9a6700]
+                                "
+                            >
+                                Admin requested changes to
+                                your previous solution.
+                            </p>
+                        )}
+                    </div>
 
                     <button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleClose}
+                        disabled={submitting}
                     >
                         ✕
                     </button>
-
                 </div>
-
 
                 <form
                     onSubmit={handleSubmit}
                     className="p-6"
                 >
-
                     {error && (
-
                         <div
                             className="
                                 mb-5
@@ -245,12 +304,47 @@ const SubmitSolutionModal = ({
                         >
                             {error}
                         </div>
-
                     )}
 
+                    {isResubmission &&
+                        latestSolution?.admin_feedback && (
+                            <div
+                                className="
+                                    mb-5
+                                    p-4
+                                    rounded-[6px]
+                                    bg-[#fff7e6]
+                                    border
+                                    border-[#f0dfb8]
+                                "
+                            >
+                                <p
+                                    className="
+                                        text-[#9a6700]
+                                        text-[9px]
+                                        font-extrabold
+                                        tracking-[0.12em]
+                                    "
+                                >
+                                    ADMIN FEEDBACK
+                                </p>
+
+                                <p
+                                    className="
+                                        mt-2
+                                        text-[#72551a]
+                                        text-sm
+                                        whitespace-pre-wrap
+                                    "
+                                >
+                                    {
+                                        latestSolution.admin_feedback
+                                    }
+                                </p>
+                            </div>
+                        )}
 
                     <div>
-
                         <label
                             className="
                                 block
@@ -259,7 +353,9 @@ const SubmitSolutionModal = ({
                                 font-bold
                             "
                         >
-                            Solution Description
+                            {isResubmission
+                                ? "Updated Solution"
+                                : "Solution Description"}
                         </label>
 
                         <textarea
@@ -271,6 +367,7 @@ const SubmitSolutionModal = ({
                                 )
                             }
                             required
+                            disabled={submitting}
                             className="
                                 w-full
                                 p-3
@@ -279,14 +376,15 @@ const SubmitSolutionModal = ({
                                 rounded-[6px]
                                 resize-none
                             "
-                            placeholder="Describe your proposed solution..."
+                            placeholder={
+                                isResubmission
+                                    ? "Describe the updated solution based on the admin feedback..."
+                                    : "Describe your proposed solution..."
+                            }
                         />
-
                     </div>
 
-
                     <div className="mt-6">
-
                         <label
                             className="
                                 block
@@ -303,6 +401,7 @@ const SubmitSolutionModal = ({
                             multiple
                             accept=".pdf,.jpg,.jpeg,.png,.webp"
                             onChange={handleFileChange}
+                            disabled={submitting}
                             className="
                                 block
                                 w-full
@@ -323,18 +422,14 @@ const SubmitSolutionModal = ({
                                 text-[#718078]
                             "
                         >
-                            Upload up to 5 files. PDF, JPG,
-                            PNG and WebP are supported.
+                            Upload up to 5 files. PDF,
+                            JPG, PNG and WebP are supported.
                         </p>
 
-
                         {attachments.length > 0 && (
-
                             <div className="mt-4 space-y-2">
-
                                 {attachments.map(
                                     (file, index) => (
-
                                         <div
                                             key={`${file.name}-${index}`}
                                             className="
@@ -349,13 +444,11 @@ const SubmitSolutionModal = ({
                                                 border-[#dce4de]
                                             "
                                         >
-
                                             <div
                                                 className="
                                                     min-w-0
                                                 "
                                             >
-
                                                 <p
                                                     className="
                                                         text-sm
@@ -377,10 +470,11 @@ const SubmitSolutionModal = ({
                                                         file.size /
                                                         1024 /
                                                         1024
-                                                    ).toFixed(2)}
-                                                    {" "}MB
+                                                    ).toFixed(
+                                                        2
+                                                    )}{" "}
+                                                    MB
                                                 </p>
-
                                             </div>
 
                                             <button
@@ -389,6 +483,9 @@ const SubmitSolutionModal = ({
                                                     removeAttachment(
                                                         index
                                                     )
+                                                }
+                                                disabled={
+                                                    submitting
                                                 }
                                                 className="
                                                     shrink-0
@@ -399,14 +496,10 @@ const SubmitSolutionModal = ({
                                             >
                                                 Remove
                                             </button>
-
                                         </div>
-
                                     )
                                 )}
-
                             </div>
-
                         )}
 
                         <p
@@ -416,11 +509,10 @@ const SubmitSolutionModal = ({
                                 text-[#718078]
                             "
                         >
-                            {attachments.length}/5 attachments
+                            {attachments.length}/5
+                            attachments
                         </p>
-
                     </div>
-
 
                     <div
                         className="
@@ -430,10 +522,10 @@ const SubmitSolutionModal = ({
                             gap-3
                         "
                     >
-
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleClose}
+                            disabled={submitting}
                             className="
                                 px-4
                                 py-2
@@ -458,18 +550,15 @@ const SubmitSolutionModal = ({
                         >
                             {submitting
                                 ? "Submitting..."
-                                : "Submit Solution"}
+                                : isResubmission
+                                    ? "Resubmit Solution"
+                                    : "Submit Solution"}
                         </button>
-
                     </div>
-
                 </form>
-
             </div>
-
         </div>
     );
 };
-
 
 export default SubmitSolutionModal;

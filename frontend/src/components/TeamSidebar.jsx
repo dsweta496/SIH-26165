@@ -22,6 +22,10 @@ function TeamSidebar() {
         storedUser?.email ||
         "Team Member";
 
+    const teamId =
+        storedUser?.team_id ||
+        "TEAM-ID";
+
     const teamInitial =
         teamName?.charAt(0)?.toUpperCase() || "T";
 
@@ -173,10 +177,9 @@ function TeamSidebar() {
                     lg:translate-x-0
                     lg:shadow-none
 
-                    ${
-                        mobileOpen
-                            ? "translate-x-0"
-                            : "-translate-x-full"
+                    ${mobileOpen
+                        ? "translate-x-0"
+                        : "-translate-x-full"
                     }
                 `}
             >
@@ -299,14 +302,13 @@ function TeamSidebar() {
 
                                             transition
 
-                                            ${
-                                                active
-                                                    ? `
+                                            ${active
+                                                ? `
                                                         bg-white
                                                         text-[#087542]
                                                         shadow-[0_3px_12px_rgba(20,50,35,0.06)]
                                                     `
-                                                    : `
+                                                : `
                                                         bg-transparent
                                                         text-[#66736b]
                                                         hover:bg-white/70
@@ -354,10 +356,9 @@ function TeamSidebar() {
 
                                                 text-[13px]
 
-                                                ${
-                                                    active
-                                                        ? "bg-[#eaf4ee] text-[#087542]"
-                                                        : "bg-[#edf2ee] text-[#7c8881]"
+                                                ${active
+                                                    ? "bg-[#eaf4ee] text-[#087542]"
+                                                    : "bg-[#edf2ee] text-[#7c8881]"
                                                 }
                                             `}
                                         >
@@ -528,32 +529,49 @@ function TeamSidebar() {
 
                             <strong
                                 className="
-                                    block
+            block
 
-                                    truncate
+            truncate
 
-                                    text-[#17211b]
+            text-[#17211b]
 
-                                    text-[11px]
-                                    font-extrabold
-                                "
+            text-[11px]
+            font-extrabold
+        "
                             >
                                 {teamName}
                             </strong>
 
                             <span
                                 className="
-                                    block
+            block
 
-                                    mt-[2px]
+            mt-[2px]
 
-                                    truncate
+            truncate
 
-                                    text-[#8a958e]
+            text-[#087542]
 
-                                    text-[8px]
-                                    font-medium
-                                "
+            text-[8px]
+            font-extrabold
+        "
+                            >
+                                {teamId}
+                            </span>
+
+                            <span
+                                className="
+            block
+
+            mt-[2px]
+
+            truncate
+
+            text-[#8a958e]
+
+            text-[8px]
+            font-medium
+        "
                             >
                                 {teamLeaderEmail}
                             </span>
