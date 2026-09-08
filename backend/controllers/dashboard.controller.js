@@ -2,7 +2,6 @@ const ProblemReport = require("../models/problemReport.model");
 const TeamProposal = require("../models/teamProposal.model");
 const Solution = require("../models/solution.model");
 
-
 // DASHBOARD OVERVIEW
 
 const getDashboardOverview = async (req, res) => {
@@ -23,6 +22,10 @@ const getDashboardOverview = async (req, res) => {
             pendingSolutions,
             changesRequested,
             approvedSolutions,
+            sifPotentialCases,
+            highSifCases,
+            barrierFailureCases,
+            lsrAlignedCases,
         ] = await Promise.all([
             ProblemReport.countDocuments(),
 
@@ -77,6 +80,36 @@ const getDashboardOverview = async (req, res) => {
             Solution.countDocuments({
                 status: "approved",
             }),
+
+            ProblemReport.countDocuments({
+                review_status: "approved",
+                sif_potential: true,
+            }),
+
+            ProblemReport.countDocuments({
+                review_status: "approved",
+                sif_potential: true,
+                sif_level: "High",
+            }),
+
+            ProblemReport.countDocuments({
+                review_status: "approved",
+                barrier_failure_mode: {
+                    $in: [
+                        "missing",
+                        "bypassed",
+                        "degraded",
+                        "unverified",
+                    ],
+                },
+            }),
+
+            ProblemReport.countDocuments({
+                review_status: "approved",
+                "lsr_tags.0": {
+                    $exists: true,
+                },
+            }),
         ]);
 
         return res.status(200).json({
@@ -108,6 +141,13 @@ const getDashboardOverview = async (req, res) => {
                     pending_review: pendingSolutions,
                     changes_requested: changesRequested,
                     approved: approvedSolutions,
+                },
+
+                safety_intelligence: {
+                    sif_potential_cases: sifPotentialCases,
+                    high_sif_cases: highSifCases,
+                    barrier_failure_cases: barrierFailureCases,
+                    lsr_aligned_cases: lsrAlignedCases,
                 },
             },
         });

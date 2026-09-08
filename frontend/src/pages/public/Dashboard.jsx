@@ -2239,6 +2239,7 @@ function Dashboard() {
                 </section>
 
             </main>
+
             {/* CASE DETAILS MODAL */}
 
             {selectedCase && (
@@ -2250,33 +2251,32 @@ function Dashboard() {
             flex
             items-center
             justify-center
-            bg-[#17211b]/60
-            px-4
-            py-6
+            bg-[#17211b]/55
+            px-5
+            py-8
         "
                     onClick={() => setSelectedCase(null)}
                 >
                     <div
                         className="
                 w-full
-                max-w-[900px]
-                max-h-[92vh]
+                max-w-[760px]
+                max-h-[90vh]
                 overflow-y-auto
                 rounded-[6px]
                 border
                 border-[#d9e2dc]
                 bg-white
-                shadow-[0_30px_90px_rgba(20,50,35,0.28)]
+                shadow-[0_30px_90px_rgba(20,50,35,0.22)]
             "
-                        onClick={(event) => event.stopPropagation()}
+                        onClick={(event) =>
+                            event.stopPropagation()
+                        }
                     >
                         {/* Header */}
 
                         <div
                             className="
-                    sticky
-                    top-0
-                    z-10
                     flex
                     items-start
                     justify-between
@@ -2285,7 +2285,6 @@ function Dashboard() {
                     py-6
                     border-b
                     border-[#e3e9e5]
-                    bg-white
                 "
                         >
                             <div>
@@ -2305,56 +2304,31 @@ function Dashboard() {
                                 <h2
                                     className="
                             text-[#17211b]
-                            text-[27px]
+                            text-[28px]
                             font-extrabold
                             tracking-[-0.04em]
                         "
                                 >
                                     {selectedCase.activity ||
-                                        selectedCase.scenario_family ||
                                         "Safety incident"}
                                 </h2>
 
-                                <div
+                                <p
                                     className="
-                            flex
-                            flex-wrap
-                            items-center
-                            gap-3
                             mt-2
+                            text-[#8a958e]
+                            text-[11px]
                         "
                                 >
-                                    <span
-                                        className="
-                                text-[#8a958e]
-                                text-[11px]
-                            "
-                                    >
-                                        {selectedCase.report_id}
-                                    </span>
-
-                                    {selectedCase.site && (
-                                        <>
-                                            <span className="text-[#c2cbc5]">
-                                                •
-                                            </span>
-
-                                            <span
-                                                className="
-                                        text-[#59655e]
-                                        text-[11px]
-                                    "
-                                            >
-                                                {selectedCase.site}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
+                                    {selectedCase.report_id}
+                                </p>
                             </div>
 
                             <button
                                 type="button"
-                                onClick={() => setSelectedCase(null)}
+                                onClick={() =>
+                                    setSelectedCase(null)
+                                }
                                 className="
                         w-10
                         h-10
@@ -2378,190 +2352,91 @@ function Dashboard() {
                             </button>
                         </div>
 
+                        {/* Case information */}
+
                         <div className="px-7 py-7">
 
-                            {/* Summary cards */}
+                            {/* Status summary */}
 
                             <div
                                 className="
                         grid
                         grid-cols-1
                         gap-4
-                        sm:grid-cols-2
-                        lg:grid-cols-4
+                        sm:grid-cols-3
                     "
                             >
-                                <div
-                                    className="
-                            p-5
-                            rounded-[5px]
-                            border
-                            border-[#dce5df]
-                            bg-[#f7faf8]
-                        "
-                                >
-                                    <span
-                                        className="
-                                block
-                                mb-2
-                                text-[#718078]
-                                text-[9px]
-                                font-extrabold
-                                tracking-[0.12em]
-                            "
-                                    >
-                                        LOCATION
-                                    </span>
+                                {[
+                                    [
+                                        "REPORT TYPE",
+                                        selectedCase.report_type,
+                                    ],
+                                    [
+                                        "REPORT DATE",
+                                        selectedCase.report_date
+                                            ? new Date(
+                                                selectedCase.report_date
+                                            ).toLocaleDateString(
+                                                "en-IN",
+                                                {
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                    year: "numeric",
+                                                }
+                                            )
+                                            : "",
+                                    ],
+                                    [
+                                        "STATUS",
+                                        selectedCase.case_status,
+                                    ],
+                                ]
+                                    .filter(
+                                        ([, value]) =>
+                                            value !== null &&
+                                            value !== undefined &&
+                                            String(value).trim() !== ""
+                                    )
+                                    .map(([label, value]) => (
+                                        <div
+                                            key={label}
+                                            className="
+                                    p-5
+                                    rounded-[5px]
+                                    border
+                                    border-[#dce5df]
+                                    bg-[#f7faf8]
+                                "
+                                        >
+                                            <span
+                                                className="
+                                        block
+                                        mb-2
+                                        text-[#718078]
+                                        text-[9px]
+                                        font-extrabold
+                                        tracking-[0.12em]
+                                    "
+                                            >
+                                                {label}
+                                            </span>
 
-                                    <strong
-                                        className="
-                                text-[#17211b]
-                                text-[14px]
-                                font-bold
-                            "
-                                    >
-                                        {selectedCase.location ||
-                                            selectedCase.site ||
-                                            "—"}
-                                    </strong>
-                                </div>
-
-                                <div
-                                    className="
-                            p-5
-                            rounded-[5px]
-                            border
-                            border-[#dce5df]
-                            bg-[#f7faf8]
-                        "
-                                >
-                                    <span
-                                        className="
-                                block
-                                mb-2
-                                text-[#718078]
-                                text-[9px]
-                                font-extrabold
-                                tracking-[0.12em]
-                            "
-                                    >
-                                        SIF SCORE
-                                    </span>
-
-                                    <strong
-                                        className="
-                                text-[#087542]
-                                text-[22px]
-                                font-extrabold
-                            "
-                                    >
-                                        {selectedCase.sif_score ?? "—"}
-                                    </strong>
-                                </div>
-
-                                <div
-                                    className="
-                            p-5
-                            rounded-[5px]
-                            border
-                            border-[#dce5df]
-                            bg-[#f7faf8]
-                        "
-                                >
-                                    <span
-                                        className="
-                                block
-                                mb-2
-                                text-[#718078]
-                                text-[9px]
-                                font-extrabold
-                                tracking-[0.12em]
-                            "
-                                    >
-                                        SIF LEVEL
-                                    </span>
-
-                                    <strong
-                                        className="
-                                text-[#17211b]
-                                text-[14px]
-                                font-bold
-                            "
-                                    >
-                                        {selectedCase.sif_level || "—"}
-                                    </strong>
-                                </div>
-
-                                <div
-                                    className="
-                            p-5
-                            rounded-[5px]
-                            border
-                            border-[#dce5df]
-                            bg-[#f7faf8]
-                        "
-                                >
-                                    <span
-                                        className="
-                                block
-                                mb-2
-                                text-[#718078]
-                                text-[9px]
-                                font-extrabold
-                                tracking-[0.12em]
-                            "
-                                    >
-                                        STATUS
-                                    </span>
-
-                                    <strong
-                                        className="
-                                text-[#17211b]
-                                text-[14px]
-                                font-bold
-                                capitalize
-                            "
-                                    >
-                                        {selectedCase.case_status || "active"}
-                                    </strong>
-                                </div>
+                                            <strong
+                                                className="
+                                        text-[#17211b]
+                                        text-[14px]
+                                        font-bold
+                                    "
+                                            >
+                                                {Array.isArray(value)
+                                                    ? value.join(", ")
+                                                    : value}
+                                            </strong>
+                                        </div>
+                                    ))}
                             </div>
 
-                            {/* Incident description */}
-
-                            <div className="mt-7">
-
-                                <span
-                                    className="
-                            block
-                            mb-3
-                            text-[#718078]
-                            text-[9px]
-                            font-extrabold
-                            tracking-[0.13em]
-                        "
-                                >
-                                    INCIDENT DESCRIPTION
-                                </span>
-
-                                <div
-                                    className="
-                            p-5
-                            rounded-[5px]
-                            border
-                            border-[#dce5df]
-                            bg-white
-                            text-[#46534b]
-                            text-[13px]
-                            leading-[1.75]
-                        "
-                                >
-                                    {selectedCase.report_text ||
-                                        "No incident description available."}
-                                </div>
-                            </div>
-
-                            {/* Incident information */}
+                            {/* Submitted report fields */}
 
                             <div className="mt-7">
 
@@ -2588,216 +2463,38 @@ function Dashboard() {
                                 >
                                     {[
                                         ["SITE", selectedCase.site],
-                                        ["ACTIVITY", selectedCase.activity],
-                                        ["LOCATION", selectedCase.location],
-                                        ["EQUIPMENT", selectedCase.equipment],
-                                        ["HAZARD", selectedCase.hazard],
-                                        ["ENERGY SOURCE", selectedCase.energy_source],
-                                        ["EXPOSURE", selectedCase.exposure],
+                                        [
+                                            "LOCATION",
+                                            selectedCase.location,
+                                        ],
+                                        [
+                                            "ACTIVITY",
+                                            selectedCase.activity,
+                                        ],
+                                        [
+                                            "EQUIPMENT",
+                                            selectedCase.equipment,
+                                        ],
+                                        [
+                                            "LANGUAGE STYLE",
+                                            selectedCase.language_style,
+                                        ],
+                                        [
+                                            "HAZARD",
+                                            selectedCase.hazard,
+                                        ],
+                                        [
+                                            "ENERGY SOURCE",
+                                            selectedCase.energy_source,
+                                        ],
+                                        [
+                                            "EXPOSURE",
+                                            selectedCase.exposure,
+                                        ],
                                         [
                                             "UNSAFE ACT / CONDITION",
                                             selectedCase.unsafe_act_condition,
                                         ],
-                                    ].map(([label, value]) => (
-                                        <div
-                                            key={label}
-                                            className="
-                                    p-4
-                                    rounded-[5px]
-                                    border
-                                    border-[#dce5df]
-                                    bg-[#f7faf8]
-                                "
-                                        >
-                                            <span
-                                                className="
-                                        block
-                                        mb-2
-                                        text-[#718078]
-                                        text-[9px]
-                                        font-extrabold
-                                        tracking-[0.11em]
-                                    "
-                                            >
-                                                {label}
-                                            </span>
-
-                                            <div
-                                                className="
-                                        text-[#46534b]
-                                        text-[13px]
-                                        leading-[1.6]
-                                    "
-                                            >
-                                                {value || "—"}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Safety intelligence */}
-
-                            <div className="mt-7">
-
-                                <span
-                                    className="
-                            block
-                            mb-3
-                            text-[#718078]
-                            text-[9px]
-                            font-extrabold
-                            tracking-[0.13em]
-                        "
-                                >
-                                    SAFETY INTELLIGENCE
-                                </span>
-
-                                <div
-                                    className="
-                            grid
-                            grid-cols-1
-                            gap-4
-                            sm:grid-cols-2
-                        "
-                                >
-                                    <div
-                                        className="
-                                p-4
-                                rounded-[5px]
-                                border
-                                border-[#dce5df]
-                                bg-[#f7faf8]
-                            "
-                                    >
-                                        <span
-                                            className="
-                                    block
-                                    mb-2
-                                    text-[#718078]
-                                    text-[9px]
-                                    font-extrabold
-                                    tracking-[0.11em]
-                                "
-                                        >
-                                            IOGP LIFE-SAVING RULE
-                                        </span>
-
-                                        <div
-                                            className="
-                                    text-[#46534b]
-                                    text-[13px]
-                                    leading-[1.6]
-                                "
-                                        >
-                                            {selectedCase.iogp_rule || "—"}
-                                        </div>
-                                    </div>
-
-                                    <div
-                                        className="
-                                p-4
-                                rounded-[5px]
-                                border
-                                border-[#dce5df]
-                                bg-[#f7faf8]
-                            "
-                                    >
-                                        <span
-                                            className="
-                                    block
-                                    mb-2
-                                    text-[#718078]
-                                    text-[9px]
-                                    font-extrabold
-                                    tracking-[0.11em]
-                                "
-                                        >
-                                            SIF POTENTIAL
-                                        </span>
-
-                                        <div
-                                            className="
-                                    text-[#46534b]
-                                    text-[13px]
-                                    leading-[1.6]
-                                "
-                                        >
-                                            {selectedCase.sif_potential
-                                                ? "Yes"
-                                                : "No"}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {selectedCase.lsr_tags?.length > 0 && (
-                                    <div
-                                        className="
-                                mt-4
-                                p-4
-                                rounded-[5px]
-                                border
-                                border-[#dce5df]
-                                bg-white
-                            "
-                                    >
-                                        <span
-                                            className="
-                                    block
-                                    mb-3
-                                    text-[#718078]
-                                    text-[9px]
-                                    font-extrabold
-                                    tracking-[0.11em]
-                                "
-                                        >
-                                            LSR TAGS
-                                        </span>
-
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedCase.lsr_tags.map(
-                                                (tag, index) => (
-                                                    <span
-                                                        key={`${tag}-${index}`}
-                                                        className="
-                                                px-3
-                                                py-1.5
-                                                rounded-full
-                                                bg-[#edf7f1]
-                                                text-[#087542]
-                                                text-[11px]
-                                                font-bold
-                                            "
-                                                    >
-                                                        {tag}
-                                                    </span>
-                                                )
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Controls and consequences */}
-
-                            <div className="mt-7">
-
-                                <span
-                                    className="
-                            block
-                            mb-3
-                            text-[#718078]
-                            text-[9px]
-                            font-extrabold
-                            tracking-[0.13em]
-                        "
-                                >
-                                    CONTROLS & CONSEQUENCES
-                                </span>
-
-                                <div className="space-y-4">
-
-                                    {[
                                         [
                                             "BARRIER / CONTROL",
                                             selectedCase.barrier_or_control,
@@ -2822,291 +2519,271 @@ function Dashboard() {
                                             "IMMEDIATE ACTION",
                                             selectedCase.immediate_action,
                                         ],
-                                    ].map(([label, value]) => (
-                                        <div
-                                            key={label}
+                                    ]
+                                        .filter(([, value]) => {
+                                            if (
+                                                value === null ||
+                                                value === undefined
+                                            ) {
+                                                return false;
+                                            }
+
+                                            if (Array.isArray(value)) {
+                                                return (
+                                                    value.length > 0 &&
+                                                    value.some(
+                                                        (item) =>
+                                                            item !== null &&
+                                                            item !== undefined &&
+                                                            String(item).trim() !== "" &&
+                                                            String(item).trim().toUpperCase() !==
+                                                            "NOT_STATED"
+                                                    )
+                                                );
+                                            }
+
+                                            const normalizedValue = String(value).trim();
+
+                                            return (
+                                                normalizedValue !== "" &&
+                                                normalizedValue.toUpperCase() !== "NOT_STATED"
+                                            );
+                                        })
+                                        .map(
+                                            ([label, value]) => (
+                                                <div
+                                                    key={label}
+                                                    className="
+                                            p-4
+                                            rounded-[5px]
+                                            border
+                                            border-[#dce5df]
+                                            bg-[#f7faf8]
+                                        "
+                                                >
+                                                    <span
+                                                        className="
+                                                block
+                                                mb-2
+                                                text-[#718078]
+                                                text-[9px]
+                                                font-extrabold
+                                                tracking-[0.12em]
+                                            "
+                                                    >
+                                                        {label}
+                                                    </span>
+
+                                                    <div
+                                                        className="
+                                                text-[#46534b]
+                                                text-[13px]
+                                                font-semibold
+                                                leading-[1.6]
+                                            "
+                                                    >
+                                                        {Array.isArray(
+                                                            value
+                                                        )
+                                                            ? value.join(
+                                                                ", "
+                                                            )
+                                                            : value}
+                                                    </div>
+                                                </div>
+                                            )
+                                        )}
+                                </div>
+                            </div>
+
+                            {/* Report description */}
+
+                            {selectedCase.report_text &&
+                                selectedCase.report_text
+                                    .trim() !== "" && (
+                                    <div className="mt-7">
+
+                                        <span
                                             className="
-                                    p-4
+                                    block
+                                    mb-3
+                                    text-[#718078]
+                                    text-[9px]
+                                    font-extrabold
+                                    tracking-[0.13em]
+                                "
+                                        >
+                                            REPORT DESCRIPTION
+                                        </span>
+
+                                        <div
+                                            className="
+                                    p-5
                                     rounded-[5px]
                                     border
                                     border-[#dce5df]
                                     bg-white
+                                    text-[#46534b]
+                                    text-[13px]
+                                    leading-[1.75]
                                 "
                                         >
-                                            <span
-                                                className="
-                                        block
-                                        mb-2
-                                        text-[#718078]
-                                        text-[9px]
-                                        font-extrabold
-                                        tracking-[0.11em]
-                                    "
-                                            >
-                                                {label}
-                                            </span>
-
-                                            <div
-                                                className="
-                                        text-[#46534b]
-                                        text-[13px]
-                                        leading-[1.65]
-                                    "
-                                            >
-                                                {value || "—"}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Evidence phrases */}
-
-                            {selectedCase.evidence_phrases?.length > 0 && (
-                                <div className="mt-7">
-
-                                    <span
-                                        className="
-                                block
-                                mb-3
-                                text-[#718078]
-                                text-[9px]
-                                font-extrabold
-                                tracking-[0.13em]
-                            "
-                                    >
-                                        EVIDENCE PHRASES
-                                    </span>
-
-                                    <div
-                                        className="
-                                p-5
-                                rounded-[5px]
-                                border
-                                border-[#dce5df]
-                                bg-[#f7faf8]
-                            "
-                                    >
-                                        <div className="space-y-2">
-                                            {selectedCase.evidence_phrases.map(
-                                                (phrase, index) => (
-                                                    <div
-                                                        key={`${phrase}-${index}`}
-                                                        className="
-                                                flex
-                                                gap-3
-                                                text-[#46534b]
-                                                text-[13px]
-                                                leading-[1.6]
-                                            "
-                                                    >
-                                                        <span
-                                                            className="
-                                                    text-[#087542]
-                                                    font-extrabold
-                                                "
-                                                        >
-                                                            •
-                                                        </span>
-
-                                                        <span>
-                                                            {phrase}
-                                                        </span>
-                                                    </div>
-                                                )
-                                            )}
+                                            {selectedCase.report_text}
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Incident attachments */}
+                            {/* Supporting evidence */}
 
-                            {selectedCase.attachments?.length > 0 && (
-                                <div className="mt-7">
+                            {Array.isArray(
+                                selectedCase.attachments
+                            ) &&
+                                selectedCase.attachments.length > 0 && (
+                                    <div className="mt-7">
 
-                                    <span
-                                        className="
-                                block
-                                mb-3
-                                text-[#718078]
-                                text-[9px]
-                                font-extrabold
-                                tracking-[0.13em]
-                            "
-                                    >
-                                        INCIDENT EVIDENCE
-                                    </span>
+                                        <span
+                                            className="
+                                    block
+                                    mb-3
+                                    text-[#718078]
+                                    text-[9px]
+                                    font-extrabold
+                                    tracking-[0.13em]
+                                "
+                                        >
+                                            SUPPORTING EVIDENCE
+                                        </span>
 
-                                    <div
-                                        className="
-                                grid
-                                grid-cols-1
-                                gap-4
-                                sm:grid-cols-2
-                            "
-                                    >
-                                        {selectedCase.attachments.map(
-                                            (attachment, index) => {
-                                                const isImage =
-                                                    attachment.type?.startsWith(
-                                                        "image/"
-                                                    );
-
-                                                return (
+                                        <div className="space-y-2">
+                                            {selectedCase.attachments.map(
+                                                (file, index) => (
                                                     <div
-                                                        key={`${attachment.url}-${index}`}
+                                                        key={
+                                                            file?.name ||
+                                                            index
+                                                        }
                                                         className="
-                                                overflow-hidden
+                                                flex
+                                                items-center
+                                                justify-between
+                                                gap-4
+                                                p-4
                                                 rounded-[5px]
                                                 border
                                                 border-[#dce5df]
                                                 bg-[#f7faf8]
                                             "
                                                     >
-                                                        {isImage ? (
-                                                            <a
-                                                                href={attachment.url}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                            >
-                                                                <img
-                                                                    src={attachment.url}
-                                                                    alt={
-                                                                        attachment.name ||
-                                                                        "Incident evidence"
-                                                                    }
-                                                                    className="
-                                                            w-full
-                                                            h-[220px]
-                                                            object-cover
-                                                            bg-[#edf2ee]
-                                                            cursor-pointer
-                                                            transition
-                                                            hover:opacity-90
-                                                        "
-                                                                />
-                                                            </a>
-                                                        ) : (
+                                                        <div className="min-w-0">
                                                             <div
                                                                 className="
-                                                        h-[150px]
-                                                        flex
-                                                        items-center
-                                                        justify-center
-                                                        bg-[#edf2ee]
-                                                        text-[#718078]
-                                                        text-[12px]
+                                                        truncate
+                                                        text-[#17211b]
+                                                        text-[13px]
                                                         font-semibold
                                                     "
                                                             >
-                                                                ATTACHMENT
+                                                                {file?.name ||
+                                                                    `Attachment ${index +
+                                                                    1
+                                                                    }`}
                                                             </div>
-                                                        )}
 
-                                                        <div
-                                                            className="
-                                                    flex
-                                                    items-center
-                                                    justify-between
-                                                    gap-3
-                                                    p-4
-                                                "
-                                                        >
-                                                            <div className="min-w-0">
+                                                            {file?.size && (
                                                                 <div
                                                                     className="
-                                                            truncate
-                                                            text-[#17211b]
-                                                            text-[12px]
-                                                            font-bold
+                                                            mt-1
+                                                            text-[#8a958e]
+                                                            text-[10px]
                                                         "
                                                                 >
-                                                                    {attachment.name ||
-                                                                        "Evidence file"}
+                                                                    {(
+                                                                        file.size /
+                                                                        (1024 *
+                                                                            1024)
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}{" "}
+                                                                    MB
                                                                 </div>
+                                                            )}
+                                                        </div>
 
-                                                                {attachment.size && (
-                                                                    <div
-                                                                        className="
-                                                                mt-1
-                                                                text-[#8a958e]
-                                                                text-[10px]
-                                                            "
-                                                                    >
-                                                                        {(
-                                                                            attachment.size /
-                                                                            1024
-                                                                        ).toFixed(1)}{" "}
-                                                                        KB
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
+                                                        {file?.url && (
                                                             <a
-                                                                href={attachment.url}
+                                                                href={
+                                                                    file.url
+                                                                }
                                                                 target="_blank"
                                                                 rel="noreferrer"
+                                                                onClick={(
+                                                                    event
+                                                                ) =>
+                                                                    event.stopPropagation()
+                                                                }
                                                                 className="
                                                         shrink-0
                                                         text-[#087542]
                                                         text-[11px]
                                                         font-extrabold
+                                                        hover:underline
                                                     "
                                                             >
-                                                                Open →
+                                                                View →
                                                             </a>
-                                                        </div>
+                                                        )}
                                                     </div>
-                                                );
-                                            }
-                                        )}
+                                                )
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                        </div>
 
-                            {/* Assigned team */}
+                        {/* Assigned team */}
 
-                            {selectedCase.assigned_team && (
-                                <div className="mt-7">
+                        {String(selectedCase.case_status || "").trim().toLowerCase() === "assigned" &&
+                            selectedCase.assigned_team && (
+                                <div className="m-7">
+
+                                    <span
+                                        className="
+                                                block
+                                                mb-3
+                                                text-[#718078]
+                                                text-[9px]
+                                                font-extrabold
+                                                tracking-[0.13em]
+                                            "
+                                    >
+                                        ASSIGNED TEAM
+                                    </span>
 
                                     <div
                                         className="
-                                p-4
-                                rounded-[5px]
-                                border
-                                border-[#dce5df]
-                                bg-[#f7faf8]
-                            "
+                                                p-5
+                                                rounded-[5px]
+                                                border
+                                                border-[#dce5df]
+                                                bg-[#f7faf8]
+                                                text-[#46534b]
+                                                text-[13px]
+                                                font-semibold
+                                                leading-[1.6]
+                                            "
                                     >
-                                        <span
-                                            className="
-                                    block
-                                    mb-2
-                                    text-[#718078]
-                                    text-[9px]
-                                    font-extrabold
-                                    tracking-[0.11em]
-                                "
-                                        >
-                                            ASSIGNED TEAM
-                                        </span>
-
-                                        <div
-                                            className="
-                                    text-[#17211b]
-                                    text-[13px]
-                                    font-bold
-                                "
-                                        >
-                                            {selectedCase.assigned_team}
-                                        </div>
+                                        {typeof selectedCase.assigned_team === "string"
+                                            ? selectedCase.assigned_team
+                                            : selectedCase.assigned_team?.name ||
+                                            selectedCase.assigned_team?.team_name ||
+                                            selectedCase.assigned_team?.teamName ||
+                                            "Team assigned"}
                                     </div>
+
                                 </div>
                             )}
-                        </div>
 
-                        {/* Footer actions */}
+                        {/* Footer */}
 
                         <div
                             className="
@@ -3124,7 +2801,9 @@ function Dashboard() {
                         >
                             <button
                                 type="button"
-                                onClick={() => setSelectedCase(null)}
+                                onClick={() =>
+                                    setSelectedCase(null)
+                                }
                                 className="
                         px-5
                         py-3
@@ -3143,37 +2822,38 @@ function Dashboard() {
                                 Close
                             </button>
 
-                            {selectedCase.case_status === "active" &&
-                                !selectedCase.assigned_team && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            navigate(
-                                                `/team-proposal/${selectedCase.report_id}`
-                                            );
-                                        }}
-                                        className="
-                                px-5
-                                py-3
-                                rounded-[3px]
-                                border-0
-                                bg-[#087542]
-                                text-white
-                                text-[12px]
-                                font-extrabold
-                                cursor-pointer
-                                transition
-                                hover:bg-[#075f36]
-                                hover:-translate-y-0.5
-                            "
-                                    >
-                                        Submit Team Proposal →
-                                    </button>
-                                )}
+                            {String(selectedCase.case_status || "").trim().toLowerCase() !== "assigned" && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigate(
+                                            `/team-proposal/${selectedCase.report_id}`
+                                        );
+                                    }}
+                                    className="
+                                        px-5
+                                        py-3
+                                        rounded-[3px]
+                                        border-0
+                                        bg-[#087542]
+                                        text-white
+                                        text-[12px]
+                                        font-extrabold
+                                        cursor-pointer
+                                        transition
+                                        hover:bg-[#075f36]
+                                        hover:-translate-y-0.5
+                                    "
+                                >
+                                    Submit Team Proposal →
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
             )}
+
+
             <Footer />
 
         </div>

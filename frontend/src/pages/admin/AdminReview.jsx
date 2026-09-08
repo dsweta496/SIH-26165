@@ -219,6 +219,246 @@ function AdminReview() {
     };
 
 
+    const hasEnteredValue = (value) => {
+    if (value === null || value === undefined) {
+        return false;
+    }
+
+    if (Array.isArray(value)) {
+        return (
+            value.length > 0 &&
+            value.some(
+                (item) =>
+                    item !== null &&
+                    item !== undefined &&
+                    String(item).trim() !== "" &&
+                    String(item).trim().toUpperCase() !== "NOT_STATED" &&
+                    String(item).trim().toUpperCase() !== "NOT STATED"
+            )
+        );
+    }
+
+    if (typeof value === "boolean") {
+        return true;
+    }
+
+    if (typeof value === "number") {
+        return value !== 0;
+    }
+
+    const normalizedValue = String(value).trim();
+
+    return (
+        normalizedValue !== "" &&
+        normalizedValue.toUpperCase() !== "NOT_STATED" &&
+        normalizedValue.toUpperCase() !== "NOT STATED"
+    );
+};
+
+
+    const formatDisplayValue = (value) => {
+        if (Array.isArray(value)) {
+            return value
+                .filter(
+                    (item) =>
+                        item !== null &&
+                        item !== undefined &&
+                        String(item).trim() !== "" &&
+                        String(item).trim().toUpperCase() !== "NOT_STATED"
+                )
+                .join(", ");
+        }
+
+        if (typeof value === "boolean") {
+            return value ? "Yes" : "No";
+        }
+
+        return value;
+    };
+
+
+    const submittedFields = selectedReport
+        ? [
+            ["Organisation", selectedReport.organization],
+            ["Sector", selectedReport.sector],
+            ["Site", selectedReport.site],
+            ["Incident Serial No.", selectedReport.incident_serial_no],
+            ["Report Date", formatDate(selectedReport.report_date)],
+            ["Incident Time", selectedReport.incident_time],
+
+            [
+                "Incident Classification",
+                selectedReport.incident_classification,
+            ],
+
+            ["Report Stage", selectedReport.report_stage],
+
+            [
+                "Incident Category",
+                selectedReport.incident_category,
+            ],
+
+            ["Incident Type", selectedReport.incident_type],
+
+            [
+                "Incident Location",
+                selectedReport.incident_location,
+            ],
+
+            ["Activity", selectedReport.activity],
+            ["Location", selectedReport.location],
+            ["Equipment", selectedReport.equipment],
+
+            ["Facility Shutdown", selectedReport.facility_shutdown],
+            ["Facility Outage", selectedReport.facility_outage],
+            ["Facility Status", selectedReport.facility_status],
+
+            [
+                "Fire Duration (Hours)",
+                selectedReport.fire_duration_hours,
+            ],
+
+            [
+                "Fire Duration (Minutes)",
+                selectedReport.fire_duration_minutes,
+            ],
+
+            [
+                "Fatalities — Employees",
+                selectedReport.fatalities?.employees,
+            ],
+
+            [
+                "Fatalities — Contractors",
+                selectedReport.fatalities?.contractors,
+            ],
+
+            [
+                "Fatalities — Others",
+                selectedReport.fatalities?.others,
+            ],
+
+            [
+                "Injuries — Employees",
+                selectedReport.injuries?.employees,
+            ],
+
+            [
+                "Injuries — Contractors",
+                selectedReport.injuries?.contractors,
+            ],
+
+            [
+                "Injuries — Others",
+                selectedReport.injuries?.others,
+            ],
+
+            [
+                "Man Hours Lost — Employees",
+                selectedReport.man_hours_lost?.employees,
+            ],
+
+            [
+                "Man Hours Lost — Contractors",
+                selectedReport.man_hours_lost?.contractors,
+            ],
+
+            [
+                "Man Hours Lost — Others",
+                selectedReport.man_hours_lost?.others,
+            ],
+
+            [
+                "Direct Loss (₹ Lakhs)",
+                selectedReport.direct_loss_in_lakhs,
+            ],
+
+            ["Indirect Loss", selectedReport.indirect_loss],
+
+            [
+                "Similar Incident Occurred",
+                selectedReport.similar_incident_occurred,
+            ],
+
+            [
+                "Similar Incident Description",
+                selectedReport.similar_incident_description,
+            ],
+
+            [
+                "Internal Investigation Completed",
+                selectedReport.internal_investigation_completed,
+            ],
+
+            [
+                "Internal Investigation Completion Date",
+                formatDate(
+                    selectedReport.internal_investigation_completion_date
+                ),
+            ],
+
+            [
+                "Investigation Report Submitted to OISD",
+                selectedReport.internal_investigation_report_submitted_to_oisd,
+            ],
+
+            [
+                "Expected OISD Submission Date",
+                formatDate(
+                    selectedReport.expected_oisd_submission_date
+                ),
+            ],
+
+            [
+                "Cause of Incident",
+                selectedReport.cause_of_incident,
+            ],
+
+            [
+                "Leakage Cause",
+                selectedReport.leakage_cause,
+            ],
+
+            [
+                "Leakage Cause Details",
+                selectedReport.leakage_cause_details,
+            ],
+
+            [
+                "Ignition Cause",
+                selectedReport.ignition_cause,
+            ],
+
+            [
+                "Ignition Cause Details",
+                selectedReport.ignition_cause_details,
+            ],
+
+            ["Avoidable", selectedReport.avoidable],
+
+            [
+                "Avoidance Factors",
+                selectedReport.avoidance_factors,
+            ],
+
+            [
+                "Language Style",
+                selectedReport.language_style,
+            ],
+
+            [
+                "Energy Source",
+                selectedReport.energy_source,
+            ],
+
+            [
+                "Post-Incident Measures",
+                selectedReport.post_incident_measures,
+            ],
+        ].filter(([, value]) => hasEnteredValue(value))
+        : [];
+
+
     /* =========================================================
        LOADING
     ========================================================= */
@@ -884,7 +1124,7 @@ function AdminReview() {
                                                 {report.sif_score !==
                                                     null &&
                                                     report.sif_score !==
-                                                        undefined && (
+                                                    undefined && (
                                                         <span
                                                             className="
                                                                 text-[#718078]
@@ -1218,411 +1458,273 @@ function AdminReview() {
                             >
 
                                 {/* =================================================
-                                    REPORT INFORMATION
-                                ================================================= */}
+    SUBMITTED REPORT DATA
+================================================= */}
 
                                 <section>
-
                                     <SectionTitle>
-                                        Report Information
+                                        Submitted Report Information
                                     </SectionTitle>
 
                                     <div
                                         className="
-                                            grid
-                                            grid-cols-1
-
-                                            gap-4
-
-                                            sm:grid-cols-2
-                                            lg:grid-cols-3
-                                        "
+            grid
+            grid-cols-1
+            gap-4
+            sm:grid-cols-2
+            lg:grid-cols-3
+        "
                                     >
-
-                                        <InfoField
-                                            label="Site"
-                                            value={
-                                                selectedReport.site
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Location"
-                                            value={
-                                                selectedReport.location
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Activity"
-                                            value={
-                                                selectedReport.activity
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Equipment"
-                                            value={
-                                                selectedReport.equipment
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Report Date"
-                                            value={
-                                                formatDate(
-                                                    selectedReport.report_date
-                                                )
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Language Style"
-                                            value={
-                                                selectedReport.language_style
-                                            }
-                                        />
-
+                                        {[
+                                            ["Report Type", selectedReport.report_type],
+                                            [
+                                                "Report Date",
+                                                formatDate(selectedReport.report_date),
+                                            ],
+                                        ]
+                                            .filter(([, value]) =>
+                                                hasEnteredValue(value)
+                                            )
+                                            .map(([label, value]) => (
+                                                <InfoField
+                                                    key={label}
+                                                    label={label}
+                                                    value={formatDisplayValue(value)}
+                                                />
+                                            ))}
                                     </div>
-
                                 </section>
 
 
                                 {/* =================================================
-                                    REPORT DESCRIPTION
-                                ================================================= */}
+    INCIDENT INFORMATION
+================================================= */}
 
-                                <section>
-
-                                    <SectionTitle>
-                                        Report Description
-                                    </SectionTitle>
-
-                                    <DetailBox>
-                                        {
-                                            selectedReport.report_text ||
-                                            "No report description provided."
-                                        }
-                                    </DetailBox>
-
-                                </section>
-
-
-                                {/* =================================================
-                                    SAFETY INFORMATION
-                                ================================================= */}
-
-                                <section>
-
-                                    <SectionTitle>
-                                        Safety Information
-                                    </SectionTitle>
-
-                                    <div
-                                        className="
-                                            grid
-                                            grid-cols-1
-
-                                            gap-4
-
-                                            md:grid-cols-2
-                                        "
-                                    >
-
-                                        <InfoField
-                                            label="Hazard"
-                                            value={
-                                                selectedReport.hazard
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Exposure"
-                                            value={
-                                                selectedReport.exposure
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Unsafe Act / Condition"
-                                            value={
-                                                selectedReport.unsafe_act_condition
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Potential Consequence"
-                                            value={
-                                                selectedReport.potential_consequence
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Actual Outcome"
-                                            value={
-                                                selectedReport.actual_outcome
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Immediate Action"
-                                            value={
-                                                selectedReport.immediate_action
-                                            }
-                                        />
-
-                                    </div>
-
-                                </section>
-
-
-                                {/* =================================================
-                                    BARRIER INFORMATION
-                                ================================================= */}
-
-                                <section>
-
-                                    <SectionTitle>
-                                        Barrier & Control
-                                    </SectionTitle>
-
-                                    <div
-                                        className="
-                                            grid
-                                            grid-cols-1
-
-                                            gap-4
-
-                                            md:grid-cols-2
-                                        "
-                                    >
-
-                                        <InfoField
-                                            label="Barrier / Control"
-                                            value={
-                                                selectedReport.barrier_or_control
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Failure Mode"
-                                            value={
-                                                selectedReport.barrier_failure_mode
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="Barrier Function"
-                                            value={
-                                                selectedReport.barrier_function
-                                            }
-                                        />
-
-                                    </div>
-
-                                </section>
-
-
-                                {/* =================================================
-                                    SIF ASSESSMENT
-                                ================================================= */}
-
-                                <section>
-
-                                    <SectionTitle>
-                                        SIF Assessment
-                                    </SectionTitle>
-
-                                    <div
-                                        className="
-                                            grid
-                                            grid-cols-1
-
-                                            gap-4
-
-                                            sm:grid-cols-3
-                                        "
-                                    >
-
-                                        <InfoField
-                                            label="SIF Potential"
-                                            value={
-                                                selectedReport.sif_potential
-                                                    ? "Yes"
-                                                    : "No"
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="SIF Level"
-                                            value={
-                                                selectedReport.sif_level
-                                            }
-                                        />
-
-                                        <InfoField
-                                            label="SIF Score"
-                                            value={
-                                                selectedReport.sif_score ??
-                                                "Not scored"
-                                            }
-                                        />
-
-                                    </div>
-
-
-                                    {selectedReport.lsr_tags?.length >
-                                        0 && (
-                                        <div className="mt-5">
-
-                                            <span
-                                                className="
-                                                    block
-
-                                                    mb-3
-
-                                                    text-[#718078]
-
-                                                    text-[10px]
-                                                    font-extrabold
-
-                                                    tracking-[0.14em]
-                                                "
-                                            >
-                                                LSR TAGS
-                                            </span>
-
-                                            <div
-                                                className="
-                                                    flex
-                                                    flex-wrap
-
-                                                    gap-2
-                                                "
-                                            >
-                                                {selectedReport.lsr_tags.map(
-                                                    (tag) => (
-                                                        <span
-                                                            key={
-                                                                tag
-                                                            }
-                                                            className="
-                                                                px-3
-                                                                py-2
-
-                                                                rounded-full
-
-                                                                bg-[#eaf4ee]
-
-                                                                text-[#087542]
-
-                                                                text-[11px]
-                                                                font-bold
-                                                            "
-                                                        >
-                                                            {tag}
-                                                        </span>
-                                                    )
-                                                )}
-                                            </div>
-
-                                        </div>
-                                    )}
-
-                                </section>
-
-
-                                {/* =================================================
-                                    ATTACHMENTS
-                                ================================================= */}
-
-                                {selectedReport.attachments?.length >
-                                    0 && (
+                                {submittedFields.length > 0 && (
                                     <section>
-
                                         <SectionTitle>
-                                            Attachments
+                                            Incident Information
                                         </SectionTitle>
 
                                         <div
                                             className="
-                                                space-y-2
-                                            "
+                grid
+                grid-cols-1
+                gap-4
+                sm:grid-cols-2
+                lg:grid-cols-3
+            "
                                         >
-
-                                            {selectedReport.attachments.map(
-                                                (
-                                                    attachment,
-                                                    index
-                                                ) => (
-                                                    <a
-                                                        key={
-                                                            attachment.url ||
-                                                            index
-                                                        }
-                                                        href={
-                                                            attachment.url
-                                                        }
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="
-                                                            flex
-                                                            items-center
-                                                            justify-between
-
-                                                            gap-4
-
-                                                            p-4
-
-                                                            rounded-[5px]
-
-                                                            border
-                                                            border-[#dce4de]
-
-                                                            bg-[#f8faf9]
-
-                                                            no-underline
-
-                                                            hover:bg-[#f1f6f3]
-                                                        "
-                                                    >
-
-                                                        <span
-                                                            className="
-                                                                truncate
-
-                                                                text-[#4f5d55]
-
-                                                                text-[13px]
-                                                                font-semibold
-                                                            "
-                                                        >
-                                                            {
-                                                                attachment.name
-                                                            }
-                                                        </span>
-
-                                                        <span
-                                                            className="
-                                                                shrink-0
-
-                                                                text-[#087542]
-
-                                                                text-[11px]
-                                                                font-extrabold
-                                                            "
-                                                        >
-                                                            Open →
-                                                        </span>
-
-                                                    </a>
+                                            {submittedFields.map(
+                                                ([label, value]) => (
+                                                    <InfoField
+                                                        key={label}
+                                                        label={label}
+                                                        value={formatDisplayValue(value)}
+                                                    />
                                                 )
                                             )}
-
                                         </div>
-
                                     </section>
                                 )}
+
+
+                                {/* =================================================
+    REPORT DESCRIPTION
+================================================= */}
+
+                                {hasEnteredValue(
+                                    selectedReport.report_text
+                                ) && (
+                                        <section>
+                                            <SectionTitle>
+                                                Report Description
+                                            </SectionTitle>
+
+                                            <DetailBox>
+                                                {selectedReport.report_text}
+                                            </DetailBox>
+                                        </section>
+                                    )}
+
+
+                                {/* =================================================
+    ACTUAL OUTCOME
+================================================= */}
+
+                                {hasEnteredValue(
+                                    selectedReport.actual_outcome
+                                ) && (
+                                        <section>
+                                            <SectionTitle>
+                                                Actual Outcome
+                                            </SectionTitle>
+
+                                            <DetailBox>
+                                                {selectedReport.actual_outcome}
+                                            </DetailBox>
+                                        </section>
+                                    )}
+
+
+                                {/* =================================================
+    POST INCIDENT MEASURES
+================================================= */}
+
+                                {hasEnteredValue(
+                                    selectedReport.post_incident_measures
+                                ) && (
+                                        <section>
+                                            <SectionTitle>
+                                                Post-Incident Measures
+                                            </SectionTitle>
+
+                                            <DetailBox>
+                                                {selectedReport.post_incident_measures}
+                                            </DetailBox>
+                                        </section>
+                                    )}
+
+
+                                {/* =================================================
+    SIMILAR INCIDENT
+================================================= */}
+
+                                {(
+                                    hasEnteredValue(
+                                        selectedReport.similar_incident_occurred
+                                    ) ||
+                                    hasEnteredValue(
+                                        selectedReport.similar_incident_description
+                                    )
+                                ) && (
+                                        <section>
+                                            <SectionTitle>
+                                                Similar Incident
+                                            </SectionTitle>
+
+                                            <div
+                                                className="
+                grid
+                grid-cols-1
+                gap-4
+                sm:grid-cols-2
+            "
+                                            >
+                                                {hasEnteredValue(
+                                                    selectedReport.similar_incident_occurred
+                                                ) && (
+                                                        <InfoField
+                                                            label="Similar Incident Occurred"
+                                                            value={formatDisplayValue(
+                                                                selectedReport.similar_incident_occurred
+                                                            )}
+                                                        />
+                                                    )}
+
+                                                {hasEnteredValue(
+                                                    selectedReport.similar_incident_description
+                                                ) && (
+                                                        <InfoField
+                                                            label="Description"
+                                                            value={formatDisplayValue(
+                                                                selectedReport.similar_incident_description
+                                                            )}
+                                                        />
+                                                    )}
+                                            </div>
+                                        </section>
+                                    )}
+
+
+                                {/* =================================================
+    ATTACHMENTS
+================================================= */}
+
+                                {Array.isArray(selectedReport.attachments) &&
+                                    selectedReport.attachments.length > 0 && (
+                                        <section>
+                                            <SectionTitle>
+                                                Supporting Evidence
+                                            </SectionTitle>
+
+                                            <div className="space-y-2">
+                                                {selectedReport.attachments.map(
+                                                    (attachment, index) => (
+                                                        <a
+                                                            key={
+                                                                attachment.url ||
+                                                                index
+                                                            }
+                                                            href={attachment.url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="
+                                flex
+                                items-center
+                                justify-between
+                                gap-4
+                                p-4
+                                rounded-[5px]
+                                border
+                                border-[#dce4de]
+                                bg-[#f8faf9]
+                                no-underline
+                                hover:bg-[#f1f6f3]
+                            "
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <span
+                                                                    className="
+                                        block
+                                        truncate
+                                        text-[#17211b]
+                                        text-[13px]
+                                        font-semibold
+                                    "
+                                                                >
+                                                                    {attachment.name ||
+                                                                        `Attachment ${index + 1
+                                                                        }`}
+                                                                </span>
+
+                                                                {attachment.size && (
+                                                                    <span
+                                                                        className="
+                                            block
+                                            mt-1
+                                            text-[#8a958e]
+                                            text-[10px]
+                                        "
+                                                                    >
+                                                                        {(
+                                                                            attachment.size /
+                                                                            (1024 * 1024)
+                                                                        ).toFixed(2)}{" "}
+                                                                        MB
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {attachment.url && (
+                                                                <span
+                                                                    className="
+                                        shrink-0
+                                        text-[#087542]
+                                        text-[11px]
+                                        font-extrabold
+                                    "
+                                                                >
+                                                                    View →
+                                                                </span>
+                                                            )}
+                                                        </a>
+                                                    )
+                                                )}
+                                            </div>
+                                        </section>
+                                    )}
+
 
 
                                 {/* =================================================
@@ -1846,31 +1948,33 @@ function SectionTitle({ children }) {
 ============================================================= */
 
 function InfoField({ label, value }) {
+    const isNotStated =
+        value === null ||
+        value === undefined ||
+        String(value).trim().toUpperCase() === "NOT_STATED" ||
+        String(value).trim().toUpperCase() === "NOT STATED";
+
+    if (isNotStated) {
+        return null;
+    }
+
     return (
         <div
             className="
                 p-5
-
                 rounded-[5px]
-
                 border
                 border-[#e2e9e4]
-
                 bg-[#f9fbfa]
             "
         >
-
             <span
                 className="
                     block
-
                     mb-2
-
                     text-[#718078]
-
                     text-[10px]
                     font-extrabold
-
                     tracking-[0.12em]
                 "
             >
@@ -1880,18 +1984,18 @@ function InfoField({ label, value }) {
             <span
                 className="
                     block
-
                     text-[#33423a]
-
                     text-[14px]
                     leading-[1.5]
-
                     font-semibold
                 "
             >
-                {value || "Not stated"}
+                {typeof value === "boolean"
+                    ? value
+                        ? "Yes"
+                        : "No"
+                    : value}
             </span>
-
         </div>
     );
 }
