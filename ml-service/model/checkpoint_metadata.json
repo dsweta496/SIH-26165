@@ -1,0 +1,36 @@
+{
+  "checkpoint_version": "FINAL_41_5Y_B",
+  "status": "FROZEN",
+  "total_reports": 96,
+  "embedding_model": "google/muril-base-cased",
+  "embedding_dimension": 768,
+  "canonical_concepts": [
+    "Energy_Isolation_Verification_Failure",
+    "Fall_Protection_Failure",
+    "Confined_Space_Entry_Control_Failure",
+    "Work_Authorisation_Failure",
+    "Mechanical_Lifting_Control_Failure",
+    "Line_of_Fire_Control_Failure"
+  ],
+  "canonical_precursor_counts": [
+    8,
+    2,
+    8,
+    2,
+    4,
+    8
+  ],
+  "canonical_precursor_reports": 30,
+  "sif_positive": 48,
+  "barrier_failure_current": 48,
+  "clusters": 12,
+  "noise": 4,
+  "sbri_mean": 38.125,
+  "sbri_median": 30.0,
+  "historical_barrier_failure_documented": 60,
+  "current_barrier_failure_reproducible": 48,
+  "historical_discrepancy_status": "RECORDED_NOT_FORCED",
+  "demo_report": "SYN-0109",
+  "demo_sbri": 90,
+  "demo_band": "Critical"
+}
