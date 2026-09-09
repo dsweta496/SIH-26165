@@ -1405,595 +1405,732 @@ function AdminActiveCases() {
                         <div className="px-8 py-8">
 
                             {/* =================================================
-        REPORT DETAILS TAB
-    ================================================= */}
+                                REPORT DETAILS TAB
+                            ================================================= */}
 
                             {activeTab === "details" && (
-                                <div className="space-y-8">
+                                <div>
 
-                                    {/* REPORT INFORMATION */}
+                                    {/* =================================================
+                                        TABLE RENDERER
+                                    ================================================= */}
 
-                                    <section>
+                                    {(() => {
 
-                                        <h3
-                                            className="
-                        mb-5
-                        text-[#17211b]
-                        text-[18px]
-                        font-extrabold
-                    "
-                                        >
-                                            Report Information
-                                        </h3>
+                                        const renderTable = (fields) => {
+                                            const visibleFields =
+                                                fields.filter(
+                                                    ([, value]) =>
+                                                        isEnteredValue(value)
+                                                );
 
+                                            if (
+                                                visibleFields.length === 0
+                                            ) {
+                                                return null;
+                                            }
 
-                                        <div
-                                            className="
-                        grid
-                        grid-cols-1
-                        gap-4
-                        sm:grid-cols-2
-                        lg:grid-cols-3
-                    "
-                                        >
+                                            return (
+                                                <div
+                                                    className="
+                                                        overflow-hidden
+                                                        rounded-[4px]
+                                                        border
+                                                        border-[#dce5df]
+                                                    "
+                                                >
+                                                    {visibleFields.map(
+                                                        (
+                                                            [label, value],
+                                                            index
+                                                        ) => (
+                                                            <div
+                                                                key={label}
+                                                                className={`
+                                                                    grid
+                                                                    grid-cols-1
+                                                                    sm:grid-cols-[250px_1fr]
 
-                                            <DetailField
-                                                label="Report Type"
-                                                value={
-                                                    selectedCase.report_type
-                                                }
-                                            />
+                                                                    ${index <
+                                                                        visibleFields.length -
+                                                                        1
+                                                                        ? "border-b border-[#e3e9e5]"
+                                                                        : ""
+                                                                    }
+                                                                `}
+                                                            >
 
-                                            <DetailField
-                                                label="Organization"
-                                                value={
-                                                    selectedCase.organization
-                                                }
-                                            />
+                                                                <div
+                                                                    className="
+                                                                        px-4
+                                                                        py-3.5
 
-                                            <DetailField
-                                                label="Sector"
-                                                value={
-                                                    selectedCase.sector
-                                                }
-                                            />
+                                                                        bg-[#f7faf8]
 
-                                            <DetailField
-                                                label="Site"
-                                                value={
-                                                    selectedCase.site
-                                                }
-                                            />
+                                                                        text-[#718078]
+                                                                        text-[9px]
+                                                                        font-extrabold
 
-                                            <DetailField
-                                                label="Incident Serial No."
-                                                value={
-                                                    selectedCase.incident_serial_no
-                                                }
-                                            />
+                                                                        tracking-[0.1em]
+                                                                    "
+                                                                >
+                                                                    {label}
+                                                                </div>
 
-                                            <DetailField
-                                                label="Report Date"
-                                                value={
-                                                    selectedCase.report_date
-                                                        ? formatDate(
-                                                            selectedCase.report_date
+                                                                <div
+                                                                    className="
+                                                                        px-4
+                                                                        py-3.5
+
+                                                                        bg-white
+
+                                                                        text-[#46534b]
+                                                                        text-[13px]
+                                                                        font-semibold
+                                                                        leading-[1.6]
+
+                                                                        break-words
+                                                                    "
+                                                                >
+                                                                    {Array.isArray(
+                                                                        value
+                                                                    )
+                                                                        ? value.join(
+                                                                            ", "
+                                                                        )
+                                                                        : String(
+                                                                            value
+                                                                        )}
+                                                                </div>
+
+                                                            </div>
                                                         )
-                                                        : null
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Incident Time"
-                                                value={
-                                                    selectedCase.incident_time
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Incident Classification"
-                                                value={
-                                                    selectedCase.incident_classification
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Report Stage"
-                                                value={
-                                                    selectedCase.report_stage
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Incident Category"
-                                                value={
-                                                    selectedCase.incident_category
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Incident Type"
-                                                value={
-                                                    selectedCase.incident_type
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Incident Location"
-                                                value={
-                                                    selectedCase.incident_location
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Activity"
-                                                value={
-                                                    selectedCase.activity
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Location"
-                                                value={
-                                                    selectedCase.location
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Equipment"
-                                                value={
-                                                    selectedCase.equipment
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Facility Status"
-                                                value={
-                                                    selectedCase.facility_status
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Language Style"
-                                                value={
-                                                    selectedCase.language_style
-                                                }
-                                            />
-
-                                        </div>
-
-                                    </section>
-
-
-                                    {/* SAFETY INFORMATION */}
-
-                                    <section>
-
-                                        <h3
-                                            className="
-                        mb-5
-                        text-[#17211b]
-                        text-[18px]
-                        font-extrabold
-                    "
-                                        >
-                                            Safety Information
-                                        </h3>
-
-
-                                        <div
-                                            className="
-                        grid
-                        grid-cols-1
-                        gap-4
-                        sm:grid-cols-2
-                        lg:grid-cols-3
-                    "
-                                        >
-
-                                            {selectedCase.fatalities?.employees > 0 && (
-                                                <InfoField
-                                                    label="Fatalities — Employees"
-                                                    value={
-                                                        selectedCase.fatalities.employees
-                                                    }
-                                                />
-                                            )}
-
-                                            {selectedCase.fatalities?.contractors > 0 && (
-                                                <InfoField
-                                                    label="Fatalities — Contractors"
-                                                    value={
-                                                        selectedCase.fatalities.contractors
-                                                    }
-                                                />
-                                            )}
-
-                                            {selectedCase.fatalities?.others > 0 && (
-                                                <InfoField
-                                                    label="Fatalities — Others"
-                                                    value={
-                                                        selectedCase.fatalities.others
-                                                    }
-                                                />
-                                            )}
-
-
-                                            {selectedCase.injuries?.employees > 0 && (
-                                                <InfoField
-                                                    label="Injuries — Employees"
-                                                    value={
-                                                        selectedCase.injuries.employees
-                                                    }
-                                                />
-                                            )}
-
-                                            {selectedCase.injuries?.contractors > 0 && (
-                                                <InfoField
-                                                    label="Injuries — Contractors"
-                                                    value={
-                                                        selectedCase.injuries.contractors
-                                                    }
-                                                />
-                                            )}
-
-                                            {selectedCase.injuries?.others > 0 && (
-                                                <InfoField
-                                                    label="Injuries — Others"
-                                                    value={
-                                                        selectedCase.injuries.others
-                                                    }
-                                                />
-                                            )}
-
-
-                                            {selectedCase.man_hours_lost?.employees > 0 && (
-                                                <InfoField
-                                                    label="Man Hours Lost — Employees"
-                                                    value={
-                                                        selectedCase.man_hours_lost.employees
-                                                    }
-                                                />
-                                            )}
-
-                                            {selectedCase.man_hours_lost?.contractors > 0 && (
-                                                <InfoField
-                                                    label="Man Hours Lost — Contractors"
-                                                    value={
-                                                        selectedCase.man_hours_lost.contractors
-                                                    }
-                                                />
-                                            )}
-
-                                            {selectedCase.man_hours_lost?.others > 0 && (
-                                                <InfoField
-                                                    label="Man Hours Lost — Others"
-                                                    value={
-                                                        selectedCase.man_hours_lost.others
-                                                    }
-                                                />
-                                            )}
-
-
-                                            <DetailField
-                                                label="Direct Loss (₹ Lakhs)"
-                                                value={
-                                                    selectedCase.direct_loss_in_lakhs
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Indirect Loss"
-                                                value={
-                                                    selectedCase.indirect_loss
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Facility Shutdown"
-                                                value={
-                                                    selectedCase.facility_shutdown
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Facility Outage"
-                                                value={
-                                                    selectedCase.facility_outage
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Similar Incident Occurred"
-                                                value={
-                                                    selectedCase.similar_incident_occurred
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Internal Investigation Completed"
-                                                value={
-                                                    selectedCase.internal_investigation_completed
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Internal Investigation Submitted to OISD"
-                                                value={
-                                                    selectedCase.internal_investigation_report_submitted_to_oisd
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Avoidable"
-                                                value={
-                                                    selectedCase.avoidable
-                                                }
-                                            />
-
-                                        </div>
-
-                                    </section>
-
-
-                                    {/* CAUSES */}
-
-                                    <section>
-
-                                        <h3
-                                            className="
-                        mb-5
-                        text-[#17211b]
-                        text-[18px]
-                        font-extrabold
-                    "
-                                        >
-                                            Causes & Contributing Factors
-                                        </h3>
-
-
-                                        <div
-                                            className="
-                        grid
-                        grid-cols-1
-                        gap-4
-                        sm:grid-cols-2
-                        lg:grid-cols-3
-                    "
-                                        >
-
-                                            <DetailField
-                                                label="Cause of Incident"
-                                                value={
-                                                    selectedCase.cause_of_incident
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Leakage Cause"
-                                                value={
-                                                    selectedCase.leakage_cause
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Leakage Cause Details"
-                                                value={
-                                                    selectedCase.leakage_cause_details
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Ignition Cause"
-                                                value={
-                                                    selectedCase.ignition_cause
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Ignition Cause Details"
-                                                value={
-                                                    selectedCase.ignition_cause_details
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Avoidance Factors"
-                                                value={
-                                                    selectedCase.avoidance_factors
-                                                }
-                                            />
-
-                                            <DetailField
-                                                label="Energy Source"
-                                                value={
-                                                    selectedCase.energy_source
-                                                }
-                                            />
-
-                                        </div>
-
-                                    </section>
-
-
-                                    {/* DESCRIPTION / ACTIONS */}
-
-                                    <section>
-
-                                        <h3
-                                            className="
-                        mb-5
-                        text-[#17211b]
-                        text-[18px]
-                        font-extrabold
-                    "
-                                        >
-                                            Report Description
-                                        </h3>
-
-
-                                        {isEnteredValue(
-                                            selectedCase.report_text
-                                        ) && (
-                                                <DetailBox>
-                                                    {selectedCase.report_text}
-                                                </DetailBox>
-                                            )}
-
-
-                                        {isEnteredValue(
-                                            selectedCase.post_incident_measures
-                                        ) && (
-                                                <div className="mt-5">
-
-                                                    <p
-                                                        className="
-                                mb-2
-                                text-[#718078]
-                                text-[10px]
-                                font-extrabold
-                                tracking-[0.12em]
-                            "
-                                                    >
-                                                        POST-INCIDENT MEASURES
-                                                    </p>
-
-                                                    <DetailBox>
-                                                        {
-                                                            selectedCase.post_incident_measures
-                                                        }
-                                                    </DetailBox>
-
+                                                    )}
                                                 </div>
-                                            )}
+                                            );
+                                        };
 
 
-                                        {isEnteredValue(
-                                            selectedCase.similar_incident_description
-                                        ) && (
-                                                <div className="mt-5">
+                                        const renderSection = (
+                                            title,
+                                            fields
+                                        ) => {
+                                            const visibleFields =
+                                                fields.filter(
+                                                    ([, value]) =>
+                                                        isEnteredValue(value)
+                                                );
 
-                                                    <p
+                                            if (
+                                                visibleFields.length === 0
+                                            ) {
+                                                return null;
+                                            }
+
+                                            return (
+                                                <section className="mb-8">
+
+                                                    <div
                                                         className="
-                                mb-2
-                                text-[#718078]
-                                text-[10px]
-                                font-extrabold
-                                tracking-[0.12em]
-                            "
+                                                            mb-3
+                                                        "
                                                     >
-                                                        SIMILAR INCIDENT
-                                                    </p>
-
-                                                    <DetailBox>
-                                                        {
-                                                            selectedCase.similar_incident_description
-                                                        }
-                                                    </DetailBox>
-
-                                                </div>
-                                            )}
-
-                                    </section>
-
-
-                                    {/* ATTACHMENTS */}
-
-                                    {selectedCase.attachments?.length > 0 && (
-                                        <section>
-
-                                            <h3
-                                                className="
-                            mb-5
-                            text-[#17211b]
-                            text-[18px]
-                            font-extrabold
-                        "
-                                            >
-                                                Attachments
-                                            </h3>
-
-
-                                            <div className="space-y-3">
-
-                                                {selectedCase.attachments.map(
-                                                    (attachment, index) => (
-                                                        <a
-                                                            key={
-                                                                attachment.url ||
-                                                                index
-                                                            }
-                                                            href={
-                                                                attachment.url
-                                                            }
-                                                            target="_blank"
-                                                            rel="noreferrer"
+                                                        <span
                                                             className="
-                                        flex
-                                        items-center
-                                        justify-between
-                                        gap-4
-                                        p-4
-                                        rounded-[5px]
-                                        border
-                                        border-[#dce4de]
-                                        bg-[#f9fbfa]
-                                        hover:border-[#b8cec0]
-                                    "
+                                                                block
+
+                                                                text-[#087542]
+                                                                text-[9px]
+                                                                font-extrabold
+
+                                                                tracking-[0.15em]
+                                                            "
                                                         >
+                                                            {title}
+                                                        </span>
 
-                                                            <div className="min-w-0">
+                                                        <div
+                                                            className="
+                                                                mt-2
+                                                                h-px
+                                                                bg-[#e3e9e5]
+                                                            "
+                                                        />
+                                                    </div>
 
-                                                                <p
+                                                    {renderTable(
+                                                        visibleFields
+                                                    )}
+
+                                                </section>
+                                            );
+                                        };
+
+
+                                        return (
+                                            <>
+
+                                                {/* =================================================
+                                                    CASE OVERVIEW
+                                                ================================================= */}
+
+                                                {renderSection(
+                                                    "CASE OVERVIEW",
+                                                    [
+                                                        [
+                                                            "REPORT TYPE",
+                                                            selectedCase.report_type,
+                                                        ],
+                                                        [
+                                                            "REPORT DATE",
+                                                            selectedCase.report_date
+                                                                ? formatDate(
+                                                                    selectedCase.report_date
+                                                                )
+                                                                : null,
+                                                        ],
+                                                        [
+                                                            "INCIDENT SERIAL NO.",
+                                                            selectedCase.incident_serial_no,
+                                                        ],
+                                                        [
+                                                            "REPORT STAGE",
+                                                            selectedCase.report_stage,
+                                                        ],
+                                                        [
+                                                            "INCIDENT CLASSIFICATION",
+                                                            selectedCase.incident_classification,
+                                                        ],
+                                                        [
+                                                            "INCIDENT CATEGORY",
+                                                            selectedCase.incident_category,
+                                                        ],
+                                                        [
+                                                            "INCIDENT TYPE",
+                                                            selectedCase.incident_type,
+                                                        ],
+                                                    ]
+                                                )}
+
+
+                                                {/* =================================================
+                                                    INCIDENT INFORMATION
+                                                ================================================= */}
+
+                                                {renderSection(
+                                                    "INCIDENT INFORMATION",
+                                                    [
+                                                        [
+                                                            "ORGANISATION",
+                                                            selectedCase.organization,
+                                                        ],
+                                                        [
+                                                            "SECTOR",
+                                                            selectedCase.sector,
+                                                        ],
+                                                        [
+                                                            "SITE",
+                                                            selectedCase.site,
+                                                        ],
+                                                        [
+                                                            "INCIDENT TIME",
+                                                            selectedCase.incident_time,
+                                                        ],
+                                                        [
+                                                            "INCIDENT LOCATION",
+                                                            selectedCase.incident_location,
+                                                        ],
+                                                        [
+                                                            "ACTIVITY",
+                                                            selectedCase.activity,
+                                                        ],
+                                                        [
+                                                            "LOCATION",
+                                                            selectedCase.location,
+                                                        ],
+                                                        [
+                                                            "EQUIPMENT",
+                                                            selectedCase.equipment,
+                                                        ],
+                                                        [
+                                                            "FACILITY STATUS",
+                                                            selectedCase.facility_status,
+                                                        ],
+                                                        [
+                                                            "LANGUAGE STYLE",
+                                                            selectedCase.language_style,
+                                                        ],
+                                                        [
+                                                            "ENERGY SOURCE",
+                                                            selectedCase.energy_source,
+                                                        ],
+                                                    ]
+                                                )}
+
+
+                                                {/* =================================================
+                                                    PEOPLE & LOSS
+                                                ================================================= */}
+
+                                                {renderSection(
+                                                    "PEOPLE & LOSS",
+                                                    [
+                                                        [
+                                                            "FATALITIES — EMPLOYEES",
+                                                            selectedCase.fatalities?.employees,
+                                                        ],
+                                                        [
+                                                            "FATALITIES — CONTRACTORS",
+                                                            selectedCase.fatalities?.contractors,
+                                                        ],
+                                                        [
+                                                            "FATALITIES — OTHERS",
+                                                            selectedCase.fatalities?.others,
+                                                        ],
+                                                        [
+                                                            "INJURIES — EMPLOYEES",
+                                                            selectedCase.injuries?.employees,
+                                                        ],
+                                                        [
+                                                            "INJURIES — CONTRACTORS",
+                                                            selectedCase.injuries?.contractors,
+                                                        ],
+                                                        [
+                                                            "INJURIES — OTHERS",
+                                                            selectedCase.injuries?.others,
+                                                        ],
+                                                        [
+                                                            "MAN HOURS LOST — EMPLOYEES",
+                                                            selectedCase.man_hours_lost?.employees,
+                                                        ],
+                                                        [
+                                                            "MAN HOURS LOST — CONTRACTORS",
+                                                            selectedCase.man_hours_lost?.contractors,
+                                                        ],
+                                                        [
+                                                            "MAN HOURS LOST — OTHERS",
+                                                            selectedCase.man_hours_lost?.others,
+                                                        ],
+                                                        [
+                                                            "DIRECT LOSS (₹ LAKHS)",
+                                                            selectedCase.direct_loss_in_lakhs,
+                                                        ],
+                                                        [
+                                                            "INDIRECT LOSS",
+                                                            selectedCase.indirect_loss,
+                                                        ],
+                                                        [
+                                                            "FACILITY SHUTDOWN",
+                                                            selectedCase.facility_shutdown,
+                                                        ],
+                                                        [
+                                                            "FACILITY OUTAGE",
+                                                            selectedCase.facility_outage,
+                                                        ],
+                                                    ]
+                                                )}
+
+
+                                                {/* =================================================
+                                                    EVENT & CAUSAL ANALYSIS
+                                                ================================================= */}
+
+                                                {renderSection(
+                                                    "EVENT & CAUSAL ANALYSIS",
+                                                    [
+                                                        [
+                                                            "CAUSE OF INCIDENT",
+                                                            selectedCase.cause_of_incident,
+                                                        ],
+                                                        [
+                                                            "LEAKAGE CAUSE",
+                                                            selectedCase.leakage_cause,
+                                                        ],
+                                                        [
+                                                            "LEAKAGE CAUSE DETAILS",
+                                                            selectedCase.leakage_cause_details,
+                                                        ],
+                                                        [
+                                                            "IGNITION CAUSE",
+                                                            selectedCase.ignition_cause,
+                                                        ],
+                                                        [
+                                                            "IGNITION CAUSE DETAILS",
+                                                            selectedCase.ignition_cause_details,
+                                                        ],
+                                                        [
+                                                            "AVOIDABLE",
+                                                            selectedCase.avoidable,
+                                                        ],
+                                                        [
+                                                            "AVOIDANCE FACTORS",
+                                                            selectedCase.avoidance_factors,
+                                                        ],
+                                                    ]
+                                                )}
+
+
+                                                {/* =================================================
+                                                    INVESTIGATION & FOLLOW-UP
+                                                ================================================= */}
+
+                                                {renderSection(
+                                                    "INVESTIGATION & FOLLOW-UP",
+                                                    [
+                                                        [
+                                                            "SIMILAR INCIDENT OCCURRED",
+                                                            selectedCase.similar_incident_occurred,
+                                                        ],
+                                                        [
+                                                            "INTERNAL INVESTIGATION COMPLETED",
+                                                            selectedCase.internal_investigation_completed,
+                                                        ],
+                                                        [
+                                                            "INTERNAL INVESTIGATION SUBMITTED TO OISD",
+                                                            selectedCase.internal_investigation_report_submitted_to_oisd,
+                                                        ],
+                                                        [
+                                                            "POST-INCIDENT MEASURES",
+                                                            selectedCase.post_incident_measures,
+                                                        ],
+                                                    ]
+                                                )}
+
+
+                                                {/* =================================================
+                                                    REPORT DESCRIPTION
+                                                ================================================= */}
+
+                                                {isEnteredValue(
+                                                    selectedCase.report_text
+                                                ) && (
+                                                        <section className="mb-8">
+
+                                                            <div className="mb-3">
+
+                                                                <span
                                                                     className="
-                                                truncate
-                                                text-[#17211b]
-                                                text-[13px]
-                                                font-bold
-                                            "
-                                                                >
-                                                                    {
-                                                                        attachment.name
-                                                                    }
-                                                                </p>
+                                                                    block
 
-                                                                <p
-                                                                    className="
-                                                mt-1
-                                                text-[#718078]
-                                                text-[11px]
-                                            "
+                                                                    text-[#087542]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.15em]
+                                                                "
                                                                 >
-                                                                    {
-                                                                        attachment.type
-                                                                    }
-                                                                </p>
+                                                                    REPORT DESCRIPTION
+                                                                </span>
+
+                                                                <div
+                                                                    className="
+                                                                    mt-2
+                                                                    h-px
+                                                                    bg-[#e3e9e5]
+                                                                "
+                                                                />
 
                                                             </div>
 
-                                                            <span
+                                                            <div
                                                                 className="
-                                            shrink-0
-                                            text-[#087542]
-                                            text-[11px]
-                                            font-extrabold
-                                        "
+                                                                px-5
+                                                                py-4
+
+                                                                rounded-[4px]
+
+                                                                border
+                                                                border-[#dce5df]
+
+                                                                bg-[#fbfcfb]
+
+                                                                text-[#46534b]
+                                                                text-[13px]
+                                                                leading-[1.75]
+
+                                                                whitespace-pre-wrap
+                                                            "
                                                             >
-                                                                Open →
-                                                            </span>
+                                                                {
+                                                                    selectedCase.report_text
+                                                                }
+                                                            </div>
 
-                                                        </a>
-                                                    )
-                                                )}
+                                                        </section>
+                                                    )}
 
-                                            </div>
 
-                                        </section>
-                                    )}
+                                                {/* =================================================
+                                                    POST-INCIDENT MEASURES
+                                                ================================================= */}
+
+                                                {isEnteredValue(
+                                                    selectedCase.post_incident_measures
+                                                ) && (
+                                                        <section className="mb-8">
+
+                                                            <div className="mb-3">
+
+                                                                <span
+                                                                    className="
+                                                                    block
+
+                                                                    text-[#087542]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.15em]
+                                                                "
+                                                                >
+                                                                    POST-INCIDENT MEASURES
+                                                                </span>
+
+                                                                <div
+                                                                    className="
+                                                                    mt-2
+                                                                    h-px
+                                                                    bg-[#e3e9e5]
+                                                                "
+                                                                />
+
+                                                            </div>
+
+                                                            <div
+                                                                className="
+                                                                px-5
+                                                                py-4
+
+                                                                rounded-[4px]
+
+                                                                border
+                                                                border-[#dce5df]
+
+                                                                bg-[#fbfcfb]
+
+                                                                text-[#46534b]
+                                                                text-[13px]
+                                                                leading-[1.75]
+
+                                                                whitespace-pre-wrap
+                                                            "
+                                                            >
+                                                                {
+                                                                    selectedCase.post_incident_measures
+                                                                }
+                                                            </div>
+
+                                                        </section>
+                                                    )}
+
+
+                                                {/* =================================================
+                                                    SIMILAR INCIDENT
+                                                ================================================= */}
+
+                                                {isEnteredValue(
+                                                    selectedCase.similar_incident_description
+                                                ) && (
+                                                        <section className="mb-8">
+
+                                                            <div className="mb-3">
+
+                                                                <span
+                                                                    className="
+                                                                    block
+
+                                                                    text-[#087542]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.15em]
+                                                                "
+                                                                >
+                                                                    SIMILAR INCIDENT
+                                                                </span>
+
+                                                                <div
+                                                                    className="
+                                                                    mt-2
+                                                                    h-px
+                                                                    bg-[#e3e9e5]
+                                                                "
+                                                                />
+
+                                                            </div>
+
+                                                            <div
+                                                                className="
+                                                                px-5
+                                                                py-4
+
+                                                                rounded-[4px]
+
+                                                                border
+                                                                border-[#dce5df]
+
+                                                                bg-[#fbfcfb]
+
+                                                                text-[#46534b]
+                                                                text-[13px]
+                                                                leading-[1.75]
+
+                                                                whitespace-pre-wrap
+                                                            "
+                                                            >
+                                                                {
+                                                                    selectedCase.similar_incident_description
+                                                                }
+                                                            </div>
+
+                                                        </section>
+                                                    )}
+
+
+                                                {/* =================================================
+                                                    SUPPORTING EVIDENCE
+                                                ================================================= */}
+
+                                                {selectedCase.attachments?.length >
+                                                    0 && (
+                                                        <section className="mb-2">
+
+                                                            <div className="mb-3">
+
+                                                                <span
+                                                                    className="
+                                                                    block
+
+                                                                    text-[#087542]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.15em]
+                                                                "
+                                                                >
+                                                                    SUPPORTING EVIDENCE
+                                                                </span>
+
+                                                                <div
+                                                                    className="
+                                                                    mt-2
+                                                                    h-px
+                                                                    bg-[#e3e9e5]
+                                                                "
+                                                                />
+
+                                                            </div>
+
+                                                            <div
+                                                                className="
+                                                                overflow-hidden
+
+                                                                rounded-[4px]
+
+                                                                border
+                                                                border-[#dce5df]
+                                                            "
+                                                            >
+
+                                                                {selectedCase.attachments.map(
+                                                                    (
+                                                                        attachment,
+                                                                        index
+                                                                    ) => (
+                                                                        <a
+                                                                            key={
+                                                                                attachment.url ||
+                                                                                index
+                                                                            }
+                                                                            href={
+                                                                                attachment.url
+                                                                            }
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="
+                                                                            flex
+                                                                            items-center
+                                                                            justify-between
+
+                                                                            gap-4
+
+                                                                            px-4
+                                                                            py-3.5
+
+                                                                            border-b
+                                                                            last:border-b-0
+                                                                            border-[#e3e9e5]
+
+                                                                            bg-white
+
+                                                                            no-underline
+
+                                                                            transition
+
+                                                                            hover:bg-[#f7faf8]
+                                                                        "
+                                                                        >
+
+                                                                            <div className="min-w-0">
+
+                                                                                <p
+                                                                                    className="
+                                                                                    truncate
+
+                                                                                    text-[#17211b]
+                                                                                    text-[13px]
+                                                                                    font-semibold
+                                                                                "
+                                                                                >
+                                                                                    {
+                                                                                        attachment.name
+                                                                                    }
+                                                                                </p>
+
+                                                                                {attachment.type && (
+                                                                                    <p
+                                                                                        className="
+                                                                                        mt-1
+
+                                                                                        text-[#8a958e]
+                                                                                        text-[10px]
+                                                                                    "
+                                                                                    >
+                                                                                        {
+                                                                                            attachment.type
+                                                                                        }
+                                                                                    </p>
+                                                                                )}
+
+                                                                            </div>
+
+                                                                            <span
+                                                                                className="
+                                                                                shrink-0
+
+                                                                                text-[#087542]
+                                                                                text-[11px]
+                                                                                font-extrabold
+                                                                            "
+                                                                            >
+                                                                                Open →
+                                                                            </span>
+
+                                                                        </a>
+                                                                    )
+                                                                )}
+
+                                                            </div>
+
+                                                        </section>
+                                                    )}
+
+                                            </>
+                                        );
+
+                                    })()}
 
                                 </div>
                             )}
-
 
                             {/* =================================================
         TEAM PROPOSALS TAB

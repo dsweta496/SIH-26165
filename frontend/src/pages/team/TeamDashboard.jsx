@@ -161,7 +161,7 @@ const TeamDashboard = () => {
     const [caseDetails, setCaseDetails] = useState(null);
     const [caseLoading, setCaseLoading] = useState(false);
 
-    const [activeTab, setActiveTab] = useState("proposal");
+    const [activeTab, setActiveTab] = useState("solutions");
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -234,7 +234,7 @@ const TeamDashboard = () => {
     const openCaseDialog = async (reportId) => {
         try {
             setSelectedCase(reportId);
-            setActiveTab("proposal");
+            setActiveTab("problem");
             setCaseLoading(true);
             setCaseDetails(null);
 
@@ -259,7 +259,7 @@ const TeamDashboard = () => {
     const closeCaseDialog = () => {
         setSelectedCase(null);
         setCaseDetails(null);
-        setActiveTab("proposal");
+        setActiveTab("problem");
     };
 
 
@@ -300,6 +300,73 @@ const TeamDashboard = () => {
                     (a.review_cycle ?? 0)
             )[0]
             : null;
+
+    const problemDetailFields = caseDetails?.report
+        ? [
+            ["SITE", caseDetails.report.site],
+            ["LOCATION", caseDetails.report.location],
+            ["ACTIVITY", caseDetails.report.activity],
+            ["EQUIPMENT", caseDetails.report.equipment],
+            ["LANGUAGE STYLE", caseDetails.report.language_style],
+            ["HAZARD", caseDetails.report.hazard],
+            ["ENERGY SOURCE", caseDetails.report.energy_source],
+            ["EXPOSURE", caseDetails.report.exposure],
+            [
+                "UNSAFE ACT / CONDITION",
+                caseDetails.report.unsafe_act_condition,
+            ],
+            [
+                "BARRIER / CONTROL",
+                caseDetails.report.barrier_or_control,
+            ],
+            [
+                "BARRIER FAILURE MODE",
+                caseDetails.report.barrier_failure_mode,
+            ],
+            [
+                "BARRIER FUNCTION",
+                caseDetails.report.barrier_function,
+            ],
+            [
+                "POTENTIAL CONSEQUENCE",
+                caseDetails.report.potential_consequence,
+            ],
+            [
+                "ACTUAL OUTCOME",
+                caseDetails.report.actual_outcome,
+            ],
+            [
+                "IMMEDIATE ACTION",
+                caseDetails.report.immediate_action,
+            ],
+        ].filter(([, value]) => {
+            if (value === null || value === undefined) {
+                return false;
+            }
+
+            if (Array.isArray(value)) {
+                return (
+                    value.length > 0 &&
+                    value.some(
+                        (item) =>
+                            item !== null &&
+                            item !== undefined &&
+                            String(item).trim() !== "" &&
+                            String(item)
+                                .trim()
+                                .toUpperCase() !== "NOT_STATED"
+                    )
+                );
+            }
+
+            const normalizedValue = String(value).trim();
+
+            return (
+                normalizedValue !== "" &&
+                normalizedValue.toUpperCase() !== "NOT_STATED"
+            );
+        })
+        : [];
 
 
     return (
@@ -645,142 +712,457 @@ const TeamDashboard = () => {
             {/* CASE DIALOG */}
 
             {selectedCase && (
-
                 <div
                     className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40"
                     onClick={closeCaseDialog}
                 >
-
                     <div
-                        className="w-full max-w-5xl max-h-[90vh] overflow-hidden bg-white rounded-[8px] shadow-[0_25px_70px_rgba(0,0,0,0.2)]"
+                        className="
+                w-full
+                max-w-5xl
+                max-h-[90vh]
+                overflow-hidden
+                bg-white
+                rounded-[8px]
+                shadow-[0_25px_70px_rgba(0,0,0,0.2)]
+            "
                         onClick={(event) =>
                             event.stopPropagation()
                         }
                     >
 
-                        {/* DIALOG HEADER */}
+                        {/* ===================================================== */}
+                        {/* HEADER */}
+                        {/* ===================================================== */}
 
-                        <div className="flex items-start justify-between px-7 py-5 border-b border-[#dce4de]">
-
+                        <div
+                            className="
+                    flex
+                    items-start
+                    justify-between
+                    px-7
+                    py-5
+                    border-b
+                    border-[#dce4de]
+                "
+                        >
                             <div>
-
-                                <p className="text-[#087542] text-[9px] font-extrabold tracking-[0.15em]">
+                                <p
+                                    className="
+                            text-[#087542]
+                            text-[9px]
+                            font-extrabold
+                            tracking-[0.15em]
+                        "
+                                >
                                     TEAM CASE
                                 </p>
 
-                                <h2 className="mt-1 text-[#17211b] text-xl font-extrabold">
+                                <h2
+                                    className="
+                            mt-1
+                            text-[#17211b]
+                            text-2xl
+                            font-extrabold
+                        "
+                                >
                                     {selectedCase}
                                 </h2>
 
+                                {caseDetails?.report?.hazard && (
+                                    <p
+                                        className="
+                                mt-1
+                                text-[#718078]
+                                text-sm
+                            "
+                                    >
+                                        {caseDetails.report.hazard}
+                                    </p>
+                                )}
                             </div>
-
 
                             <button
                                 type="button"
                                 onClick={closeCaseDialog}
-                                className="w-9 h-9 rounded-[4px] bg-[#edf2ee] text-[#66736b] hover:text-[#087542] text-lg"
+                                className="
+                        w-10
+                        h-10
+                        shrink-0
+                        rounded-full
+                        border
+                        border-[#dce4de]
+                        bg-white
+                        text-[#66736b]
+                        hover:text-[#087542]
+                        hover:border-[#b9c9be]
+                        text-lg
+                        transition
+                    "
                             >
                                 ×
                             </button>
-
                         </div>
 
 
-                        {caseLoading ? (
+                        {/* ===================================================== */}
+                        {/* LOADING */}
+                        {/* ===================================================== */}
 
+                        {caseLoading ? (
                             <div className="p-16 text-center">
                                 <p className="text-[#718078] text-sm">
                                     Loading case details...
                                 </p>
                             </div>
-
                         ) : caseDetails ? (
 
-                            <div className="max-h-[calc(90vh-85px)] overflow-y-auto">
+                            <div className="max-h-[calc(90vh-96px)] overflow-y-auto">
 
-                                {/* CASE SUMMARY */}
-
-                                <div className="px-7 pt-6">
-
-                                    <h3 className="text-[#17211b] text-lg font-extrabold">
-                                        {caseDetails.report?.hazard ||
-                                            caseDetails.report?.activity ||
-                                            "Safety Problem"}
-                                    </h3>
-
-                                    <p className="mt-2 text-[#718078] text-sm">
-                                        {caseDetails.report?.report_text ||
-                                            "No description available."}
-                                    </p>
-                                    <AttachmentList
-                                        attachments={caseDetails.report?.attachments}
-                                        label="ORIGINAL EVIDENCE"
-                                    />
-
-                                </div>
-
-
+                                {/* ================================================= */}
                                 {/* TABS */}
+                                {/* ================================================= */}
 
-                                <div className="px-7 mt-6 border-b border-[#dce4de]">
+                                <div
+                                    className="
+                            px-7
+                            pt-5
+                            border-b
+                            border-[#dce4de]
+                            bg-white
+                            sticky
+                            top-0
+                            z-10
+                        "
+                                >
+                                    <div className="flex gap-8">
 
-                                    <div className="flex gap-7">
+                                        {/* PROBLEM DETAIL */}
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setActiveTab("problem")
+                                            }
+                                            className={`
+                                    pb-3
+                                    text-xs
+                                    font-extrabold
+                                    transition
+                                    ${activeTab === "problem"
+                                                    ? "text-[#087542] border-b-[3px] border-[#e31e24]"
+                                                    : "text-[#8a958e]"
+                                                }
+                                `}
+                                        >
+                                            PROBLEM DETAIL
+                                        </button>
+
+
+                                        {/* TEAM PROPOSAL */}
 
                                         <button
                                             type="button"
                                             onClick={() =>
                                                 setActiveTab("proposal")
                                             }
-                                            className={`pb-3 text-xs font-extrabold ${activeTab === "proposal"
-                                                ? "text-[#087542] border-b-[3px] border-[#e31e24]"
-                                                : "text-[#8a958e]"
-                                                }`}
+                                            className={`
+                                    pb-3
+                                    text-xs
+                                    font-extrabold
+                                    transition
+                                    ${activeTab === "proposal"
+                                                    ? "text-[#087542] border-b-[3px] border-[#e31e24]"
+                                                    : "text-[#8a958e]"
+                                                }
+                                `}
                                         >
                                             TEAM PROPOSAL
                                         </button>
 
+
+                                        {/* SOLUTIONS */}
 
                                         <button
                                             type="button"
                                             onClick={() =>
                                                 setActiveTab("solutions")
                                             }
-                                            className={`pb-3 text-xs font-extrabold ${activeTab === "solutions"
-                                                ? "text-[#087542] border-b-[3px] border-[#e31e24]"
-                                                : "text-[#8a958e]"
-                                                }`}
+                                            className={`
+                                    pb-3
+                                    text-xs
+                                    font-extrabold
+                                    transition
+                                    ${activeTab === "solutions"
+                                                    ? "text-[#087542] border-b-[3px] border-[#e31e24]"
+                                                    : "text-[#8a958e]"
+                                                }
+                                `}
                                         >
                                             SOLUTIONS
                                         </button>
 
                                     </div>
-
                                 </div>
 
 
+                                {/* ================================================= */}
+                                {/* TAB CONTENT */}
+                                {/* ================================================= */}
+
                                 <div className="p-7">
 
-                                    {/* PROPOSAL */}
 
-                                    {activeTab === "proposal" && (
+                                    {/* ================================================= */}
+                                    {/* 1. PROBLEM DETAIL */}
+                                    {/* ================================================= */}
 
+                                    {activeTab === "problem" && (
                                         <div>
 
-                                            <h3 className="text-[#17211b] text-base font-extrabold">
-                                                Accepted Team Proposal
-                                            </h3>
+                                            <div className="mb-7">
+                                                <p
+                                                    className="
+                                            text-[#087542]
+                                            text-[9px]
+                                            font-extrabold
+                                            tracking-[0.14em]
+                                        "
+                                                >
+                                                    REPORTED SAFETY PROBLEM
+                                                </p>
+
+                                                <h3
+                                                    className="
+                                            mt-2
+                                            text-[#17211b]
+                                            text-xl
+                                            font-extrabold
+                                        "
+                                                >
+                                                    {caseDetails.report?.hazard ||
+                                                        caseDetails.report?.activity ||
+                                                        "Safety Problem"}
+                                                </h3>
+
+                                                {caseDetails.report?.report_text && (
+                                                    <p
+                                                        className="
+                                                mt-2
+                                                text-[#718078]
+                                                text-sm
+                                                leading-6
+                                            "
+                                                    >
+                                                        {caseDetails.report.report_text}
+                                                    </p>
+                                                )}
+                                            </div>
+
+
+                                            {/* INCIDENT INFORMATION */}
+
+                                            {problemDetailFields.length > 0 && (
+                                                <div className="mt-7">
+
+                                                    <span
+                                                        className="
+                                                block
+                                                mb-3
+                                                text-[#718078]
+                                                text-[9px]
+                                                font-extrabold
+                                                tracking-[0.13em]
+                                            "
+                                                    >
+                                                        INCIDENT INFORMATION
+                                                    </span>
+
+                                                    <div
+                                                        className="
+                                                grid
+                                                grid-cols-1
+                                                sm:grid-cols-2
+                                                gap-4
+                                            "
+                                                    >
+                                                        {problemDetailFields.map(
+                                                            ([label, value]) => (
+                                                                <div
+                                                                    key={label}
+                                                                    className="
+                                                            p-4
+                                                            rounded-[5px]
+                                                            border
+                                                            border-[#dce5df]
+                                                            bg-[#f7faf8]
+                                                        "
+                                                                >
+                                                                    <span
+                                                                        className="
+                                                                block
+                                                                mb-2
+                                                                text-[#718078]
+                                                                text-[9px]
+                                                                font-extrabold
+                                                                tracking-[0.12em]
+                                                            "
+                                                                    >
+                                                                        {label}
+                                                                    </span>
+
+                                                                    <div
+                                                                        className="
+                                                                text-[#46534b]
+                                                                text-[13px]
+                                                                font-semibold
+                                                                leading-[1.6]
+                                                            "
+                                                                    >
+                                                                        {Array.isArray(
+                                                                            value
+                                                                        )
+                                                                            ? value.join(
+                                                                                ", "
+                                                                            )
+                                                                            : value}
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+
+                                                </div>
+                                            )}
+
+
+                                            {/* REPORT DESCRIPTION */}
+
+                                            {caseDetails.report?.report_text && (
+                                                <div className="mt-7">
+
+                                                    <span
+                                                        className="
+                                                block
+                                                mb-3
+                                                text-[#718078]
+                                                text-[9px]
+                                                font-extrabold
+                                                tracking-[0.13em]
+                                            "
+                                                    >
+                                                        REPORT DESCRIPTION
+                                                    </span>
+
+                                                    <div
+                                                        className="
+                                                p-5
+                                                rounded-[5px]
+                                                border
+                                                border-[#dce5df]
+                                                bg-white
+                                                text-[#46534b]
+                                                text-[13px]
+                                                leading-[1.75]
+                                                whitespace-pre-wrap
+                                            "
+                                                    >
+                                                        {caseDetails.report.report_text}
+                                                    </div>
+
+                                                </div>
+                                            )}
+
+
+                                            {/* ORIGINAL EVIDENCE */}
+
+                                            <AttachmentList
+                                                attachments={
+                                                    caseDetails.report?.attachments
+                                                }
+                                                label="ORIGINAL EVIDENCE"
+                                            />
+
+                                        </div>
+                                    )}
+
+
+                                    {/* ================================================= */}
+                                    {/* 2. TEAM PROPOSAL */}
+                                    {/* ================================================= */}
+
+                                    {activeTab === "proposal" && (
+                                        <div>
+
+                                            <div className="mb-6">
+
+                                                <p
+                                                    className="
+                                            text-[#087542]
+                                            text-[9px]
+                                            font-extrabold
+                                            tracking-[0.14em]
+                                        "
+                                                >
+                                                    ASSIGNED TEAM
+                                                </p>
+
+                                                <h3
+                                                    className="
+                                            mt-2
+                                            text-[#17211b]
+                                            text-xl
+                                            font-extrabold
+                                        "
+                                                >
+                                                    Team Proposal
+                                                </h3>
+
+                                                <p
+                                                    className="
+                                            mt-1
+                                            text-[#718078]
+                                            text-sm
+                                        "
+                                                >
+                                                    The proposal submitted and accepted
+                                                    for this case.
+                                                </p>
+
+                                            </div>
+
 
                                             {caseDetails.proposal ? (
 
-                                                <div className="mt-4 p-5 bg-[#f7faf8] border border-[#dce4de] rounded-[6px]">
+                                                <div
+                                                    className="
+                                            p-6
+                                            rounded-[6px]
+                                            border
+                                            border-[#dce4de]
+                                            bg-[#f7faf8]
+                                        "
+                                                >
 
-                                                    <p className="text-[#66736b] text-sm whitespace-pre-wrap">
-                                                        {caseDetails.proposal.solution_proposal ||
+                                                    <p
+                                                        className="
+                                                text-[#66736b]
+                                                text-sm
+                                                leading-7
+                                                whitespace-pre-wrap
+                                            "
+                                                    >
+                                                        {caseDetails.proposal
+                                                            .solution_proposal ||
                                                             "No proposal description available."}
                                                     </p>
 
+
                                                     <AttachmentList
-                                                        attachments={caseDetails.proposal.attachments}
+                                                        attachments={
+                                                            caseDetails.proposal
+                                                                .attachments
+                                                        }
                                                         label="PROPOSAL DOCUMENTS"
                                                     />
 
@@ -788,68 +1170,124 @@ const TeamDashboard = () => {
 
                                             ) : (
 
-                                                <p className="mt-4 text-[#718078] text-sm">
-                                                    No accepted proposal available.
-                                                </p>
+                                                <div
+                                                    className="
+                                            p-10
+                                            text-center
+                                            bg-[#f7faf8]
+                                            rounded-[6px]
+                                            border
+                                            border-[#dce4de]
+                                        "
+                                                >
+                                                    <p
+                                                        className="
+                                                text-[#718078]
+                                                text-sm
+                                            "
+                                                    >
+                                                        No accepted team proposal
+                                                        available.
+                                                    </p>
+                                                </div>
 
                                             )}
 
                                         </div>
-
                                     )}
 
 
-                                    {/* SOLUTIONS */}
+                                    {/* ================================================= */}
+                                    {/* 3. SOLUTIONS */}
+                                    {/* ================================================= */}
 
                                     {activeTab === "solutions" && (
-
                                         <div>
 
-                                            <div className="flex items-center justify-between gap-4">
+                                            <div
+                                                className="
+                                        flex
+                                        items-start
+                                        justify-between
+                                        gap-4
+                                    "
+                                            >
 
                                                 <div>
 
-                                                    <h3 className="text-[#17211b] text-base font-extrabold">
+                                                    <p
+                                                        className="
+                                                text-[#087542]
+                                                text-[9px]
+                                                font-extrabold
+                                                tracking-[0.14em]
+                                            "
+                                                    >
+                                                        SOLUTION MANAGEMENT
+                                                    </p>
+
+                                                    <h3
+                                                        className="
+                                                mt-2
+                                                text-[#17211b]
+                                                text-xl
+                                                font-extrabold
+                                            "
+                                                    >
                                                         Solution History
                                                     </h3>
 
-                                                    <p className="mt-1 text-[#718078] text-xs">
-                                                        Every submission and review cycle remains available here.
+                                                    <p
+                                                        className="
+                                                mt-1
+                                                text-[#718078]
+                                                text-xs
+                                            "
+                                                    >
+                                                        Every submission and review
+                                                        cycle remains available here.
                                                     </p>
 
                                                 </div>
 
 
-                                                {caseDetails.report?.case_status === "assigned" &&
+                                                {/* SUBMIT SOLUTION */}
+
+                                                {caseDetails.report?.case_status ===
+                                                    "assigned" &&
                                                     (!latestSolution ||
                                                         latestSolution.status ===
                                                         "changes_requested") && (
+
                                                         <button
                                                             type="button"
                                                             onClick={() =>
-                                                                setShowSolutionModal(true)
+                                                                setShowSolutionModal(
+                                                                    true
+                                                                )
                                                             }
                                                             className="
-                                                           px-4
-                                                           py-2.5
-                                                   
-                                                           rounded-[4px]
-                                                   
-                                                           bg-[#087542]
-                                                           text-white
-                                                   
-                                                           text-xs
-                                                           font-extrabold
-                                                           hover:bg-[#075f36]
-                                                           transition
-                                                       "
+                                                    shrink-0
+                                                    px-4
+                                                    py-2.5
+                                                    rounded-[4px]
+                                                    bg-[#087542]
+                                                    text-white
+                                                    text-xs
+                                                    font-extrabold
+                                                    hover:bg-[#075f36]
+                                                    transition
+                                                "
                                                         >
                                                             + Submit Solution
                                                         </button>
+
                                                     )}
 
                                             </div>
 
+
+                                            {/* SOLUTION LIST */}
 
                                             <div className="mt-6 space-y-4">
 
@@ -860,16 +1298,48 @@ const TeamDashboard = () => {
 
                                                             <div
                                                                 key={solution._id}
-                                                                className="p-5 border border-[#dce4de] rounded-[6px] bg-white"
+                                                                className="
+                                                        p-5
+                                                        border
+                                                        border-[#dce4de]
+                                                        rounded-[6px]
+                                                        bg-white
+                                                    "
                                                             >
 
-                                                                <div className="flex items-center justify-between">
+                                                                <div
+                                                                    className="
+                                                            flex
+                                                            items-center
+                                                            justify-between
+                                                            gap-4
+                                                        "
+                                                                >
 
-                                                                    <span className="text-[#087542] text-xs font-extrabold">
-                                                                        Cycle {solution.review_cycle}
+                                                                    <span
+                                                                        className="
+                                                                text-[#087542]
+                                                                text-xs
+                                                                font-extrabold
+                                                            "
+                                                                    >
+                                                                        Cycle{" "}
+                                                                        {
+                                                                            solution.review_cycle
+                                                                        }
                                                                     </span>
 
-                                                                    <span className="px-2 py-1 rounded-full bg-[#edf2ee] text-[#66736b] text-[9px] font-extrabold">
+                                                                    <span
+                                                                        className="
+                                                                px-2
+                                                                py-1
+                                                                rounded-full
+                                                                bg-[#edf2ee]
+                                                                text-[#66736b]
+                                                                text-[9px]
+                                                                font-extrabold
+                                                            "
+                                                                    >
                                                                         {getStatusLabel(
                                                                             solution.status
                                                                         )}
@@ -878,30 +1348,68 @@ const TeamDashboard = () => {
                                                                 </div>
 
 
-                                                                <p className="mt-4 text-[#53635a] text-sm whitespace-pre-wrap">
-                                                                    {solution.solution_text}
+                                                                <p
+                                                                    className="
+                                                            mt-4
+                                                            text-[#53635a]
+                                                            text-sm
+                                                            leading-7
+                                                            whitespace-pre-wrap
+                                                        "
+                                                                >
+                                                                    {
+                                                                        solution.solution_text
+                                                                    }
                                                                 </p>
 
+
                                                                 <AttachmentList
-                                                                    attachments={solution.attachments}
+                                                                    attachments={
+                                                                        solution.attachments
+                                                                    }
                                                                     label={`CYCLE ${solution.review_cycle} DOCUMENTS`}
                                                                 />
 
 
+                                                                {/* ADMIN FEEDBACK */}
+
                                                                 {solution.admin_feedback && (
+                                                                    <div
+                                                                        className="
+                                                                mt-4
+                                                                p-4
+                                                                rounded-[4px]
+                                                                bg-[#fff7e6]
+                                                                border
+                                                                border-[#f0dfb8]
+                                                            "
+                                                                    >
 
-                                                                    <div className="mt-4 p-4 rounded-[4px] bg-[#fff7e6] border border-[#f0dfb8]">
-
-                                                                        <p className="text-[#9a6700] text-[9px] font-extrabold tracking-wide">
+                                                                        <p
+                                                                            className="
+                                                                    text-[#9a6700]
+                                                                    text-[9px]
+                                                                    font-extrabold
+                                                                    tracking-wide
+                                                                "
+                                                                        >
                                                                             ADMIN FEEDBACK
                                                                         </p>
 
-                                                                        <p className="mt-2 text-[#72551a] text-xs whitespace-pre-wrap">
-                                                                            {solution.admin_feedback}
+                                                                        <p
+                                                                            className="
+                                                                    mt-2
+                                                                    text-[#72551a]
+                                                                    text-xs
+                                                                    whitespace-pre-wrap
+                                                                "
+                                                                        >
+                                                                            {
+                                                                                solution.admin_feedback
+                                                                            }
                                                                         </p>
 
                                                                     </div>
-
                                                                 )}
 
                                                             </div>
@@ -911,12 +1419,25 @@ const TeamDashboard = () => {
 
                                                 ) : (
 
-                                                    <div className="p-8 text-center bg-[#f7faf8] rounded-[6px] border border-[#dce4de]">
-
-                                                        <p className="text-[#718078] text-sm">
-                                                            No solution has been submitted yet.
+                                                    <div
+                                                        className="
+                                                p-10
+                                                text-center
+                                                bg-[#f7faf8]
+                                                rounded-[6px]
+                                                border
+                                                border-[#dce4de]
+                                            "
+                                                    >
+                                                        <p
+                                                            className="
+                                                    text-[#718078]
+                                                    text-sm
+                                                "
+                                                        >
+                                                            No solution has been
+                                                            submitted yet.
                                                         </p>
-
                                                     </div>
 
                                                 )}
@@ -924,7 +1445,6 @@ const TeamDashboard = () => {
                                             </div>
 
                                         </div>
-
                                     )}
 
                                 </div>
@@ -942,9 +1462,7 @@ const TeamDashboard = () => {
                         )}
 
                     </div>
-
                 </div>
-
             )}
 
             {/* SUBMIT MODAL */}

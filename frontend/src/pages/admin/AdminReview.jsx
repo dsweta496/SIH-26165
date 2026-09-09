@@ -220,40 +220,40 @@ function AdminReview() {
 
 
     const hasEnteredValue = (value) => {
-    if (value === null || value === undefined) {
-        return false;
-    }
+        if (value === null || value === undefined) {
+            return false;
+        }
 
-    if (Array.isArray(value)) {
+        if (Array.isArray(value)) {
+            return (
+                value.length > 0 &&
+                value.some(
+                    (item) =>
+                        item !== null &&
+                        item !== undefined &&
+                        String(item).trim() !== "" &&
+                        String(item).trim().toUpperCase() !== "NOT_STATED" &&
+                        String(item).trim().toUpperCase() !== "NOT STATED"
+                )
+            );
+        }
+
+        if (typeof value === "boolean") {
+            return true;
+        }
+
+        if (typeof value === "number") {
+            return value !== 0;
+        }
+
+        const normalizedValue = String(value).trim();
+
         return (
-            value.length > 0 &&
-            value.some(
-                (item) =>
-                    item !== null &&
-                    item !== undefined &&
-                    String(item).trim() !== "" &&
-                    String(item).trim().toUpperCase() !== "NOT_STATED" &&
-                    String(item).trim().toUpperCase() !== "NOT STATED"
-            )
+            normalizedValue !== "" &&
+            normalizedValue.toUpperCase() !== "NOT_STATED" &&
+            normalizedValue.toUpperCase() !== "NOT STATED"
         );
-    }
-
-    if (typeof value === "boolean") {
-        return true;
-    }
-
-    if (typeof value === "number") {
-        return value !== 0;
-    }
-
-    const normalizedValue = String(value).trim();
-
-    return (
-        normalizedValue !== "" &&
-        normalizedValue.toUpperCase() !== "NOT_STATED" &&
-        normalizedValue.toUpperCase() !== "NOT STATED"
-    );
-};
+    };
 
 
     const formatDisplayValue = (value) => {
@@ -1225,12 +1225,15 @@ function AdminReview() {
                 REPORT DETAIL MODAL
             ================================================= */}
 
+            {/* =================================================
+                REPORT DETAIL MODAL
+            ================================================= */}
+
             {selectedReport && (
                 <div
                     className="
                         fixed
                         inset-0
-
                         z-[100]
 
                         flex
@@ -1242,25 +1245,30 @@ function AdminReview() {
                         p-4
                         sm:p-6
                     "
+                    onClick={handleCloseReport}
                 >
-
                     <div
                         className="
                             relative
 
                             w-full
-                            max-w-[1050px]
+                            max-w-[900px]
 
                             max-h-[92vh]
-
                             overflow-y-auto
 
                             rounded-[6px]
 
+                            border
+                            border-[#dce4de]
+
                             bg-white
 
-                            shadow-[0_25px_80px_rgba(0,0,0,0.25)]
+                            shadow-[0_25px_80px_rgba(20,50,35,0.22)]
                         "
+                        onClick={(event) =>
+                            event.stopPropagation()
+                        }
                     >
 
                         {/* =================================================
@@ -1271,7 +1279,7 @@ function AdminReview() {
                             className="
                                 sticky
                                 top-0
-                                z-10
+                                z-20
 
                                 flex
                                 items-start
@@ -1279,48 +1287,47 @@ function AdminReview() {
 
                                 gap-5
 
-                                px-8
+                                px-7
                                 py-6
 
                                 border-b
-                                border-[#dce4de]
+                                border-[#e3e9e5]
 
                                 bg-white
                             "
                         >
+                            <div className="min-w-0">
 
-                            <div>
-
-                                <p
+                                <span
                                     className="
+                                        block
                                         mb-2
 
                                         text-[#087542]
-
-                                        text-[10px]
+                                        text-[9px]
                                         font-extrabold
 
                                         tracking-[0.18em]
                                     "
                                 >
                                     PROBLEM REPORT
-                                </p>
+                                </span>
 
                                 <h2
                                     className="
                                         text-[#17211b]
 
-                                        text-[30px]
+                                        text-[28px]
                                         leading-none
 
                                         font-extrabold
 
                                         tracking-[-0.04em]
+
+                                        break-words
                                     "
                                 >
-                                    {
-                                        selectedReport.report_id
-                                    }
+                                    {selectedReport.report_id}
                                 </h2>
 
                                 <p
@@ -1328,52 +1335,52 @@ function AdminReview() {
                                         mt-2
 
                                         text-[#718078]
-
-                                        text-[13px]
+                                        text-[12px]
                                     "
                                 >
-                                    {
-                                        selectedReport.report_type
-                                    }
+                                    {selectedReport.report_type ||
+                                        "Safety report"}
                                 </p>
 
                             </div>
 
-
                             <button
                                 type="button"
-                                onClick={
-                                    handleCloseReport
-                                }
+                                onClick={handleCloseReport}
+                                disabled={submitting}
                                 className="
                                     w-10
                                     h-10
+
+                                    shrink-0
 
                                     flex
                                     items-center
                                     justify-center
 
-                                    shrink-0
-
                                     rounded-full
 
                                     border
-                                    border-[#dce4de]
+                                    border-[#dce5df]
 
                                     bg-white
 
-                                    text-[#66736b]
-
-                                    text-[20px]
+                                    text-[#718078]
+                                    text-[18px]
 
                                     cursor-pointer
 
+                                    transition
+
                                     hover:bg-[#f5f8f6]
+                                    hover:text-[#17211b]
+
+                                    disabled:opacity-50
+                                    disabled:cursor-not-allowed
                                 "
                             >
                                 ×
                             </button>
-
                         </div>
 
 
@@ -1392,7 +1399,6 @@ function AdminReview() {
                                     items-center
                                 "
                             >
-
                                 <div
                                     className="
                                         w-9
@@ -1413,13 +1419,11 @@ function AdminReview() {
                                         mt-5
 
                                         text-[#718078]
-
                                         text-[14px]
                                     "
                                 >
                                     Loading report...
                                 </p>
-
                             </div>
 
                         ) : detailError ? (
@@ -1432,485 +1436,949 @@ function AdminReview() {
                                     text-center
                                 "
                             >
-
                                 <p
                                     className="
                                         text-[#c62828]
-
                                         text-[14px]
                                         font-bold
                                     "
                                 >
                                     {detailError}
                                 </p>
-
                             </div>
 
                         ) : (
 
-                            <div
-                                className="
-                                    px-8
-                                    py-8
-
-                                    space-y-9
-                                "
-                            >
+                            <div className="px-7 py-7">
 
                                 {/* =================================================
-    SUBMITTED REPORT DATA
-================================================= */}
+                                    LOCAL TABLE RENDERER
+                                ================================================= */}
 
-                                <section>
-                                    <SectionTitle>
-                                        Submitted Report Information
-                                    </SectionTitle>
+                                {(() => {
 
-                                    <div
-                                        className="
-            grid
-            grid-cols-1
-            gap-4
-            sm:grid-cols-2
-            lg:grid-cols-3
-        "
-                                    >
-                                        {[
-                                            ["Report Type", selectedReport.report_type],
-                                            [
-                                                "Report Date",
-                                                formatDate(selectedReport.report_date),
-                                            ],
-                                        ]
-                                            .filter(([, value]) =>
-                                                hasEnteredValue(value)
-                                            )
-                                            .map(([label, value]) => (
-                                                <InfoField
-                                                    key={label}
-                                                    label={label}
-                                                    value={formatDisplayValue(value)}
-                                                />
-                                            ))}
-                                    </div>
-                                </section>
+                                    const renderTable = (fields) => {
+                                        const visibleFields =
+                                            fields.filter(
+                                                ([, value]) =>
+                                                    hasEnteredValue(value)
+                                            );
 
+                                        if (
+                                            visibleFields.length === 0
+                                        ) {
+                                            return null;
+                                        }
 
-                                {/* =================================================
-    INCIDENT INFORMATION
-================================================= */}
-
-                                {submittedFields.length > 0 && (
-                                    <section>
-                                        <SectionTitle>
-                                            Incident Information
-                                        </SectionTitle>
-
-                                        <div
-                                            className="
-                grid
-                grid-cols-1
-                gap-4
-                sm:grid-cols-2
-                lg:grid-cols-3
-            "
-                                        >
-                                            {submittedFields.map(
-                                                ([label, value]) => (
-                                                    <InfoField
-                                                        key={label}
-                                                        label={label}
-                                                        value={formatDisplayValue(value)}
-                                                    />
-                                                )
-                                            )}
-                                        </div>
-                                    </section>
-                                )}
-
-
-                                {/* =================================================
-    REPORT DESCRIPTION
-================================================= */}
-
-                                {hasEnteredValue(
-                                    selectedReport.report_text
-                                ) && (
-                                        <section>
-                                            <SectionTitle>
-                                                Report Description
-                                            </SectionTitle>
-
-                                            <DetailBox>
-                                                {selectedReport.report_text}
-                                            </DetailBox>
-                                        </section>
-                                    )}
-
-
-                                {/* =================================================
-    ACTUAL OUTCOME
-================================================= */}
-
-                                {hasEnteredValue(
-                                    selectedReport.actual_outcome
-                                ) && (
-                                        <section>
-                                            <SectionTitle>
-                                                Actual Outcome
-                                            </SectionTitle>
-
-                                            <DetailBox>
-                                                {selectedReport.actual_outcome}
-                                            </DetailBox>
-                                        </section>
-                                    )}
-
-
-                                {/* =================================================
-    POST INCIDENT MEASURES
-================================================= */}
-
-                                {hasEnteredValue(
-                                    selectedReport.post_incident_measures
-                                ) && (
-                                        <section>
-                                            <SectionTitle>
-                                                Post-Incident Measures
-                                            </SectionTitle>
-
-                                            <DetailBox>
-                                                {selectedReport.post_incident_measures}
-                                            </DetailBox>
-                                        </section>
-                                    )}
-
-
-                                {/* =================================================
-    SIMILAR INCIDENT
-================================================= */}
-
-                                {(
-                                    hasEnteredValue(
-                                        selectedReport.similar_incident_occurred
-                                    ) ||
-                                    hasEnteredValue(
-                                        selectedReport.similar_incident_description
-                                    )
-                                ) && (
-                                        <section>
-                                            <SectionTitle>
-                                                Similar Incident
-                                            </SectionTitle>
-
+                                        return (
                                             <div
                                                 className="
-                grid
-                grid-cols-1
-                gap-4
-                sm:grid-cols-2
-            "
+                                                    overflow-hidden
+
+                                                    rounded-[4px]
+
+                                                    border
+                                                    border-[#dce5df]
+                                                "
                                             >
-                                                {hasEnteredValue(
-                                                    selectedReport.similar_incident_occurred
-                                                ) && (
-                                                        <InfoField
-                                                            label="Similar Incident Occurred"
-                                                            value={formatDisplayValue(
-                                                                selectedReport.similar_incident_occurred
-                                                            )}
-                                                        />
-                                                    )}
+                                                {visibleFields.map(
+                                                    (
+                                                        [label, value],
+                                                        index
+                                                    ) => (
+                                                        <div
+                                                            key={label}
+                                                            className={`
+                                                                grid
+                                                                grid-cols-1
+                                                                sm:grid-cols-[240px_1fr]
 
-                                                {hasEnteredValue(
-                                                    selectedReport.similar_incident_description
-                                                ) && (
-                                                        <InfoField
-                                                            label="Description"
-                                                            value={formatDisplayValue(
-                                                                selectedReport.similar_incident_description
-                                                            )}
-                                                        />
-                                                    )}
-                                            </div>
-                                        </section>
-                                    )}
-
-
-                                {/* =================================================
-    ATTACHMENTS
-================================================= */}
-
-                                {Array.isArray(selectedReport.attachments) &&
-                                    selectedReport.attachments.length > 0 && (
-                                        <section>
-                                            <SectionTitle>
-                                                Supporting Evidence
-                                            </SectionTitle>
-
-                                            <div className="space-y-2">
-                                                {selectedReport.attachments.map(
-                                                    (attachment, index) => (
-                                                        <a
-                                                            key={
-                                                                attachment.url ||
-                                                                index
-                                                            }
-                                                            href={attachment.url}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="
-                                flex
-                                items-center
-                                justify-between
-                                gap-4
-                                p-4
-                                rounded-[5px]
-                                border
-                                border-[#dce4de]
-                                bg-[#f8faf9]
-                                no-underline
-                                hover:bg-[#f1f6f3]
-                            "
+                                                                ${index <
+                                                                    visibleFields.length -
+                                                                    1
+                                                                    ? "border-b border-[#e3e9e5]"
+                                                                    : ""
+                                                                }
+                                                            `}
                                                         >
-                                                            <div className="min-w-0">
-                                                                <span
-                                                                    className="
-                                        block
-                                        truncate
-                                        text-[#17211b]
-                                        text-[13px]
-                                        font-semibold
-                                    "
-                                                                >
-                                                                    {attachment.name ||
-                                                                        `Attachment ${index + 1
-                                                                        }`}
-                                                                </span>
 
-                                                                {attachment.size && (
-                                                                    <span
-                                                                        className="
-                                            block
-                                            mt-1
-                                            text-[#8a958e]
-                                            text-[10px]
-                                        "
-                                                                    >
-                                                                        {(
-                                                                            attachment.size /
-                                                                            (1024 * 1024)
-                                                                        ).toFixed(2)}{" "}
-                                                                        MB
-                                                                    </span>
+                                                            <div
+                                                                className="
+                                                                    px-4
+                                                                    py-3.5
+
+                                                                    bg-[#f7faf8]
+
+                                                                    text-[#718078]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.1em]
+                                                                "
+                                                            >
+                                                                {label}
+                                                            </div>
+
+                                                            <div
+                                                                className="
+                                                                    px-4
+                                                                    py-3.5
+
+                                                                    bg-white
+
+                                                                    text-[#46534b]
+                                                                    text-[13px]
+                                                                    font-semibold
+                                                                    leading-[1.6]
+
+                                                                    break-words
+                                                                "
+                                                            >
+                                                                {formatDisplayValue(
+                                                                    value
                                                                 )}
                                                             </div>
 
-                                                            {attachment.url && (
-                                                                <span
-                                                                    className="
-                                        shrink-0
-                                        text-[#087542]
-                                        text-[11px]
-                                        font-extrabold
-                                    "
-                                                                >
-                                                                    View →
-                                                                </span>
-                                                            )}
-                                                        </a>
+                                                        </div>
                                                     )
                                                 )}
                                             </div>
-                                        </section>
-                                    )}
+                                        );
+                                    };
 
 
+                                    const renderSection = (
+                                        title,
+                                        fields
+                                    ) => {
+                                        const visibleFields =
+                                            fields.filter(
+                                                ([, value]) =>
+                                                    hasEnteredValue(value)
+                                            );
 
-                                {/* =================================================
-                                    REVIEWER NOTES
-                                ================================================= */}
-
-                                <section>
-
-                                    <SectionTitle>
-                                        Reviewer Notes
-                                    </SectionTitle>
-
-                                    <textarea
-                                        value={
-                                            reviewerNotes
+                                        if (
+                                            visibleFields.length === 0
+                                        ) {
+                                            return null;
                                         }
-                                        onChange={(event) =>
-                                            setReviewerNotes(
-                                                event.target
-                                                    .value
-                                            )
-                                        }
-                                        placeholder="Add notes about this review..."
-                                        rows={5}
-                                        disabled={
-                                            submitting
-                                        }
-                                        className="
-                                            w-full
 
-                                            resize-y
+                                        return (
+                                            <section className="mb-8">
 
-                                            px-5
-                                            py-4
+                                                <div
+                                                    className="
+                                                        mb-3
+                                                    "
+                                                >
+                                                    <span
+                                                        className="
+                                                            block
 
-                                            rounded-[5px]
+                                                            text-[#087542]
+                                                            text-[9px]
+                                                            font-extrabold
 
-                                            border
-                                            border-[#dce4de]
+                                                            tracking-[0.15em]
+                                                        "
+                                                    >
+                                                        {title}
+                                                    </span>
 
-                                            bg-[#fbfcfb]
+                                                    <div
+                                                        className="
+                                                            mt-2
 
-                                            text-[#17211b]
+                                                            h-px
 
-                                            text-[14px]
-                                            leading-[1.6]
+                                                            bg-[#e3e9e5]
+                                                        "
+                                                    />
+                                                </div>
 
-                                            outline-none
+                                                {renderTable(
+                                                    visibleFields
+                                                )}
 
-                                            focus:border-[#087542]
-                                        "
-                                    />
-
-                                </section>
-
-
-                                {/* =================================================
-                                    ACTION ERROR
-                                ================================================= */}
-
-                                {actionError && (
-                                    <div
-                                        className="
-                                            p-4
-
-                                            rounded-[5px]
-
-                                            border
-                                            border-[#f0cccc]
-
-                                            bg-[#fff6f6]
-
-                                            text-[#c62828]
-
-                                            text-[12px]
-                                            font-bold
-                                        "
-                                    >
-                                        {actionError}
-                                    </div>
-                                )}
+                                            </section>
+                                        );
+                                    };
 
 
-                                {/* =================================================
-                                    REVIEW ACTIONS
-                                ================================================= */}
+                                    return (
+                                        <>
 
-                                <div
-                                    className="
-                                        flex
-                                        flex-col-reverse
+                                            {/* =================================================
+                                                CASE OVERVIEW
+                                            ================================================= */}
 
-                                        gap-3
-
-                                        pt-2
-
-                                        sm:flex-row
-                                        sm:justify-end
-                                    "
-                                >
-
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            handleReview(
-                                                "rejected"
-                                            )
-                                        }
-                                        disabled={
-                                            submitting
-                                        }
-                                        className="
-                                            px-7
-                                            py-4
-
-                                            rounded-[3px]
-
-                                            border
-                                            border-[#e5caca]
-
-                                            bg-white
-
-                                            text-[#c62828]
-
-                                            text-[12px]
-                                            font-extrabold
-
-                                            cursor-pointer
-
-                                            hover:bg-[#fff6f6]
-
-                                            disabled:opacity-50
-                                            disabled:cursor-not-allowed
-                                        "
-                                    >
-                                        {submitting
-                                            ? "Processing..."
-                                            : "Reject Report"}
-                                    </button>
+                                            {renderSection(
+                                                "CASE OVERVIEW",
+                                                [
+                                                    [
+                                                        "REPORT TYPE",
+                                                        selectedReport.report_type,
+                                                    ],
+                                                    [
+                                                        "REPORT DATE",
+                                                        formatDate(
+                                                            selectedReport.report_date
+                                                        ),
+                                                    ],
+                                                    [
+                                                        "INCIDENT SERIAL NO.",
+                                                        selectedReport.incident_serial_no,
+                                                    ],
+                                                    [
+                                                        "REPORT STAGE",
+                                                        selectedReport.report_stage,
+                                                    ],
+                                                    [
+                                                        "SIF CLASSIFICATION",
+                                                        getSifLabel(
+                                                            selectedReport
+                                                        ),
+                                                    ],
+                                                    [
+                                                        "SIF SCORE",
+                                                        selectedReport.sif_score,
+                                                    ],
+                                                ]
+                                            )}
 
 
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            handleReview(
-                                                "approved"
-                                            )
-                                        }
-                                        disabled={
-                                            submitting
-                                        }
-                                        className="
-                                            px-8
-                                            py-4
+                                            {/* =================================================
+                                                INCIDENT INFORMATION
+                                            ================================================= */}
 
-                                            rounded-[3px]
+                                            {renderSection(
+                                                "INCIDENT INFORMATION",
+                                                [
+                                                    [
+                                                        "ORGANISATION",
+                                                        selectedReport.organization,
+                                                    ],
+                                                    [
+                                                        "SECTOR",
+                                                        selectedReport.sector,
+                                                    ],
+                                                    [
+                                                        "SITE",
+                                                        selectedReport.site,
+                                                    ],
+                                                    [
+                                                        "INCIDENT TIME",
+                                                        selectedReport.incident_time,
+                                                    ],
+                                                    [
+                                                        "INCIDENT CLASSIFICATION",
+                                                        selectedReport.incident_classification,
+                                                    ],
+                                                    [
+                                                        "INCIDENT CATEGORY",
+                                                        selectedReport.incident_category,
+                                                    ],
+                                                    [
+                                                        "INCIDENT TYPE",
+                                                        selectedReport.incident_type,
+                                                    ],
+                                                    [
+                                                        "INCIDENT LOCATION",
+                                                        selectedReport.incident_location,
+                                                    ],
+                                                    [
+                                                        "ACTIVITY",
+                                                        selectedReport.activity,
+                                                    ],
+                                                    [
+                                                        "LOCATION",
+                                                        selectedReport.location,
+                                                    ],
+                                                    [
+                                                        "EQUIPMENT",
+                                                        selectedReport.equipment,
+                                                    ],
+                                                    [
+                                                        "LANGUAGE STYLE",
+                                                        selectedReport.language_style,
+                                                    ],
+                                                    [
+                                                        "ENERGY SOURCE",
+                                                        selectedReport.energy_source,
+                                                    ],
+                                                ]
+                                            )}
 
-                                            border-0
 
-                                            bg-[#087542]
+                                            {/* =================================================
+                                                FACILITY & OPERATIONAL IMPACT
+                                            ================================================= */}
 
-                                            text-white
+                                            {renderSection(
+                                                "FACILITY & OPERATIONAL IMPACT",
+                                                [
+                                                    [
+                                                        "FACILITY SHUTDOWN",
+                                                        selectedReport.facility_shutdown,
+                                                    ],
+                                                    [
+                                                        "FACILITY OUTAGE",
+                                                        selectedReport.facility_outage,
+                                                    ],
+                                                    [
+                                                        "FACILITY STATUS",
+                                                        selectedReport.facility_status,
+                                                    ],
+                                                    [
+                                                        "FIRE DURATION (HOURS)",
+                                                        selectedReport.fire_duration_hours,
+                                                    ],
+                                                    [
+                                                        "FIRE DURATION (MINUTES)",
+                                                        selectedReport.fire_duration_minutes,
+                                                    ],
+                                                ]
+                                            )}
 
-                                            text-[12px]
-                                            font-extrabold
 
-                                            cursor-pointer
+                                            {/* =================================================
+                                                PEOPLE & LOSS
+                                            ================================================= */}
 
-                                            hover:bg-[#065c38]
+                                            {renderSection(
+                                                "PEOPLE & LOSS",
+                                                [
+                                                    [
+                                                        "FATALITIES — EMPLOYEES",
+                                                        selectedReport.fatalities?.employees,
+                                                    ],
+                                                    [
+                                                        "FATALITIES — CONTRACTORS",
+                                                        selectedReport.fatalities?.contractors,
+                                                    ],
+                                                    [
+                                                        "FATALITIES — OTHERS",
+                                                        selectedReport.fatalities?.others,
+                                                    ],
+                                                    [
+                                                        "INJURIES — EMPLOYEES",
+                                                        selectedReport.injuries?.employees,
+                                                    ],
+                                                    [
+                                                        "INJURIES — CONTRACTORS",
+                                                        selectedReport.injuries?.contractors,
+                                                    ],
+                                                    [
+                                                        "INJURIES — OTHERS",
+                                                        selectedReport.injuries?.others,
+                                                    ],
+                                                    [
+                                                        "MAN HOURS LOST — EMPLOYEES",
+                                                        selectedReport.man_hours_lost?.employees,
+                                                    ],
+                                                    [
+                                                        "MAN HOURS LOST — CONTRACTORS",
+                                                        selectedReport.man_hours_lost?.contractors,
+                                                    ],
+                                                    [
+                                                        "MAN HOURS LOST — OTHERS",
+                                                        selectedReport.man_hours_lost?.others,
+                                                    ],
+                                                    [
+                                                        "DIRECT LOSS (₹ LAKHS)",
+                                                        selectedReport.direct_loss_in_lakhs,
+                                                    ],
+                                                    [
+                                                        "INDIRECT LOSS",
+                                                        selectedReport.indirect_loss,
+                                                    ],
+                                                ]
+                                            )}
 
-                                            disabled:opacity-50
-                                            disabled:cursor-not-allowed
-                                        "
-                                    >
-                                        {submitting
-                                            ? "Processing..."
-                                            : "Approve Report"}
-                                    </button>
 
-                                </div>
+                                            {/* =================================================
+                                                EVENT & CAUSAL ANALYSIS
+                                            ================================================= */}
+
+                                            {renderSection(
+                                                "EVENT & CAUSAL ANALYSIS",
+                                                [
+                                                    [
+                                                        "CAUSE OF INCIDENT",
+                                                        selectedReport.cause_of_incident,
+                                                    ],
+                                                    [
+                                                        "LEAKAGE CAUSE",
+                                                        selectedReport.leakage_cause,
+                                                    ],
+                                                    [
+                                                        "LEAKAGE CAUSE DETAILS",
+                                                        selectedReport.leakage_cause_details,
+                                                    ],
+                                                    [
+                                                        "IGNITION CAUSE",
+                                                        selectedReport.ignition_cause,
+                                                    ],
+                                                    [
+                                                        "IGNITION CAUSE DETAILS",
+                                                        selectedReport.ignition_cause_details,
+                                                    ],
+                                                    [
+                                                        "AVOIDABLE",
+                                                        selectedReport.avoidable,
+                                                    ],
+                                                    [
+                                                        "AVOIDANCE FACTORS",
+                                                        selectedReport.avoidance_factors,
+                                                    ],
+                                                ]
+                                            )}
+
+
+                                            {/* =================================================
+                                                INVESTIGATION & FOLLOW-UP
+                                            ================================================= */}
+
+                                            {renderSection(
+                                                "INVESTIGATION & FOLLOW-UP",
+                                                [
+                                                    [
+                                                        "SIMILAR INCIDENT OCCURRED",
+                                                        selectedReport.similar_incident_occurred,
+                                                    ],
+                                                    [
+                                                        "SIMILAR INCIDENT DESCRIPTION",
+                                                        selectedReport.similar_incident_description,
+                                                    ],
+                                                    [
+                                                        "INTERNAL INVESTIGATION COMPLETED",
+                                                        selectedReport.internal_investigation_completed,
+                                                    ],
+                                                    [
+                                                        "INTERNAL INVESTIGATION COMPLETION DATE",
+                                                        selectedReport.internal_investigation_completion_date
+                                                            ? formatDate(
+                                                                selectedReport.internal_investigation_completion_date
+                                                            )
+                                                            : null,
+                                                    ],
+                                                    [
+                                                        "INVESTIGATION REPORT SUBMITTED TO OISD",
+                                                        selectedReport.internal_investigation_report_submitted_to_oisd,
+                                                    ],
+                                                    [
+                                                        "EXPECTED OISD SUBMISSION DATE",
+                                                        selectedReport.expected_oisd_submission_date
+                                                            ? formatDate(
+                                                                selectedReport.expected_oisd_submission_date
+                                                            )
+                                                            : null,
+                                                    ],
+                                                    [
+                                                        "POST-INCIDENT MEASURES",
+                                                        selectedReport.post_incident_measures,
+                                                    ],
+                                                ]
+                                            )}
+
+
+                                            {/* =================================================
+                                                REPORT DESCRIPTION
+                                            ================================================= */}
+
+                                            {hasEnteredValue(
+                                                selectedReport.report_text
+                                            ) && (
+                                                    <section className="mb-8">
+
+                                                        <div className="mb-3">
+
+                                                            <span
+                                                                className="
+                                                                block
+
+                                                                text-[#087542]
+                                                                text-[9px]
+                                                                font-extrabold
+
+                                                                tracking-[0.15em]
+                                                            "
+                                                            >
+                                                                REPORT DESCRIPTION
+                                                            </span>
+
+                                                            <div
+                                                                className="
+                                                                mt-2
+                                                                h-px
+                                                                bg-[#e3e9e5]
+                                                            "
+                                                            />
+
+                                                        </div>
+
+                                                        <div
+                                                            className="
+                                                            px-5
+                                                            py-4
+
+                                                            rounded-[4px]
+
+                                                            border
+                                                            border-[#dce5df]
+
+                                                            bg-[#fbfcfb]
+
+                                                            text-[#46534b]
+                                                            text-[13px]
+                                                            leading-[1.75]
+
+                                                            whitespace-pre-wrap
+                                                        "
+                                                        >
+                                                            {
+                                                                selectedReport.report_text
+                                                            }
+                                                        </div>
+
+                                                    </section>
+                                                )}
+
+
+                                            {/* =================================================
+                                                ACTUAL OUTCOME
+                                            ================================================= */}
+
+                                            {hasEnteredValue(
+                                                selectedReport.actual_outcome
+                                            ) && (
+                                                    <section className="mb-8">
+
+                                                        <div className="mb-3">
+
+                                                            <span
+                                                                className="
+                                                                block
+
+                                                                text-[#087542]
+                                                                text-[9px]
+                                                                font-extrabold
+
+                                                                tracking-[0.15em]
+                                                            "
+                                                            >
+                                                                ACTUAL OUTCOME
+                                                            </span>
+
+                                                            <div
+                                                                className="
+                                                                mt-2
+                                                                h-px
+                                                                bg-[#e3e9e5]
+                                                            "
+                                                            />
+
+                                                        </div>
+
+                                                        <div
+                                                            className="
+                                                            px-5
+                                                            py-4
+
+                                                            rounded-[4px]
+
+                                                            border
+                                                            border-[#dce5df]
+
+                                                            bg-[#fbfcfb]
+
+                                                            text-[#46534b]
+                                                            text-[13px]
+                                                            leading-[1.75]
+
+                                                            whitespace-pre-wrap
+                                                        "
+                                                        >
+                                                            {
+                                                                selectedReport.actual_outcome
+                                                            }
+                                                        </div>
+
+                                                    </section>
+                                                )}
+
+
+                                            {/* =================================================
+                                                SUPPORTING EVIDENCE
+                                            ================================================= */}
+
+                                            {Array.isArray(
+                                                selectedReport.attachments
+                                            ) &&
+                                                selectedReport.attachments
+                                                    .length > 0 && (
+
+                                                    <section className="mb-8">
+
+                                                        <div className="mb-3">
+
+                                                            <span
+                                                                className="
+                                                                    block
+
+                                                                    text-[#087542]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.15em]
+                                                                "
+                                                            >
+                                                                SUPPORTING EVIDENCE
+                                                            </span>
+
+                                                            <div
+                                                                className="
+                                                                    mt-2
+                                                                    h-px
+                                                                    bg-[#e3e9e5]
+                                                                "
+                                                            />
+
+                                                        </div>
+
+                                                        <div
+                                                            className="
+                                                                overflow-hidden
+
+                                                                rounded-[4px]
+
+                                                                border
+                                                                border-[#dce5df]
+                                                            "
+                                                        >
+                                                            {selectedReport.attachments.map(
+                                                                (
+                                                                    attachment,
+                                                                    index
+                                                                ) => (
+                                                                    <a
+                                                                        key={
+                                                                            attachment.url ||
+                                                                            index
+                                                                        }
+                                                                        href={
+                                                                            attachment.url
+                                                                        }
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="
+                                                                            flex
+                                                                            items-center
+                                                                            justify-between
+
+                                                                            gap-4
+
+                                                                            px-4
+                                                                            py-3.5
+
+                                                                            border-b
+                                                                            last:border-b-0
+                                                                            border-[#e3e9e5]
+
+                                                                            bg-white
+
+                                                                            no-underline
+
+                                                                            transition
+
+                                                                            hover:bg-[#f7faf8]
+                                                                        "
+                                                                    >
+
+                                                                        <div className="min-w-0">
+
+                                                                            <span
+                                                                                className="
+                                                                                    block
+                                                                                    truncate
+
+                                                                                    text-[#17211b]
+                                                                                    text-[13px]
+                                                                                    font-semibold
+                                                                                "
+                                                                            >
+                                                                                {
+                                                                                    attachment.name ||
+                                                                                    `Attachment ${index +
+                                                                                    1
+                                                                                    }`
+                                                                                }
+                                                                            </span>
+
+                                                                            {attachment.size && (
+                                                                                <span
+                                                                                    className="
+                                                                                        block
+                                                                                        mt-1
+
+                                                                                        text-[#8a958e]
+                                                                                        text-[10px]
+                                                                                    "
+                                                                                >
+                                                                                    {(
+                                                                                        attachment.size /
+                                                                                        (1024 *
+                                                                                            1024)
+                                                                                    ).toFixed(
+                                                                                        2
+                                                                                    )}{" "}
+                                                                                    MB
+                                                                                </span>
+                                                                            )}
+
+                                                                        </div>
+
+                                                                        <span
+                                                                            className="
+                                                                                shrink-0
+
+                                                                                text-[#087542]
+                                                                                text-[11px]
+                                                                                font-extrabold
+                                                                            "
+                                                                        >
+                                                                            View →
+                                                                        </span>
+
+                                                                    </a>
+                                                                )
+                                                            )}
+                                                        </div>
+
+                                                    </section>
+                                                )}
+
+
+                                            {/* =================================================
+                                                REVIEWER NOTES
+                                            ================================================= */}
+
+                                            <section className="mb-7">
+
+                                                <div className="mb-3">
+
+                                                    <span
+                                                        className="
+                                                            block
+
+                                                            text-[#087542]
+                                                            text-[9px]
+                                                            font-extrabold
+
+                                                            tracking-[0.15em]
+                                                        "
+                                                    >
+                                                        REVIEWER NOTES
+                                                    </span>
+
+                                                    <div
+                                                        className="
+                                                            mt-2
+                                                            h-px
+                                                            bg-[#e3e9e5]
+                                                        "
+                                                    />
+
+                                                </div>
+
+                                                <textarea
+                                                    value={
+                                                        reviewerNotes
+                                                    }
+                                                    onChange={(event) =>
+                                                        setReviewerNotes(
+                                                            event.target
+                                                                .value
+                                                        )
+                                                    }
+                                                    placeholder="Add notes about this review..."
+                                                    rows={5}
+                                                    disabled={
+                                                        submitting
+                                                    }
+                                                    className="
+                                                        w-full
+
+                                                        resize-y
+
+                                                        px-5
+                                                        py-4
+
+                                                        rounded-[4px]
+
+                                                        border
+                                                        border-[#dce5df]
+
+                                                        bg-[#fbfcfb]
+
+                                                        text-[#17211b]
+                                                        text-[13px]
+                                                        leading-[1.7]
+
+                                                        outline-none
+
+                                                        transition
+
+                                                        focus:border-[#087542]
+                                                        focus:bg-white
+
+                                                        disabled:opacity-60
+                                                    "
+                                                />
+
+                                            </section>
+
+
+                                            {/* =================================================
+                                                ACTION ERROR
+                                            ================================================= */}
+
+                                            {actionError && (
+                                                <div
+                                                    className="
+                                                        mb-6
+
+                                                        px-4
+                                                        py-3
+
+                                                        rounded-[4px]
+
+                                                        border
+                                                        border-[#f0cccc]
+
+                                                        bg-[#fff6f6]
+
+                                                        text-[#c62828]
+                                                        text-[12px]
+                                                        font-bold
+                                                    "
+                                                >
+                                                    {actionError}
+                                                </div>
+                                            )}
+
+
+                                            {/* =================================================
+                                                REVIEW ACTIONS
+                                            ================================================= */}
+
+                                            <div
+                                                className="
+                                                    flex
+                                                    flex-col-reverse
+
+                                                    gap-3
+
+                                                    pt-5
+
+                                                    border-t
+                                                    border-[#e3e9e5]
+
+                                                    sm:flex-row
+                                                    sm:justify-end
+                                                "
+                                            >
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleReview(
+                                                            "rejected"
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        submitting
+                                                    }
+                                                    className="
+                                                        px-7
+                                                        py-3.5
+
+                                                        rounded-[3px]
+
+                                                        border
+                                                        border-[#e5caca]
+
+                                                        bg-white
+
+                                                        text-[#c62828]
+                                                        text-[12px]
+                                                        font-extrabold
+
+                                                        cursor-pointer
+
+                                                        transition
+
+                                                        hover:bg-[#fff6f6]
+
+                                                        disabled:opacity-50
+                                                        disabled:cursor-not-allowed
+                                                    "
+                                                >
+                                                    {submitting
+                                                        ? "Processing..."
+                                                        : "Reject Report"}
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleReview(
+                                                            "approved"
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        submitting
+                                                    }
+                                                    className="
+                                                        px-8
+                                                        py-3.5
+
+                                                        rounded-[3px]
+
+                                                        border-0
+
+                                                        bg-[#087542]
+
+                                                        text-white
+                                                        text-[12px]
+                                                        font-extrabold
+
+                                                        cursor-pointer
+
+                                                        transition
+
+                                                        hover:bg-[#065c38]
+
+                                                        disabled:opacity-50
+                                                        disabled:cursor-not-allowed
+                                                    "
+                                                >
+                                                    {submitting
+                                                        ? "Processing..."
+                                                        : "Approve Report"}
+                                                </button>
+
+                                            </div>
+
+                                        </>
+                                    );
+
+                                })()}
 
                             </div>
                         )}
 
                     </div>
-
                 </div>
             )}
 

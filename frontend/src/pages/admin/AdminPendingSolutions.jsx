@@ -12,6 +12,14 @@ import {
     requestSolutionChanges,
 } from "../../api/solution.api";
 
+import {
+    getProblemReportById,
+} from "../../api/problemReport.api";
+
+import {
+    getProposalsForReport,
+} from "../../api/teamProposal.api";
+
 
 function AdminPendingSolutions() {
 
@@ -22,6 +30,27 @@ function AdminPendingSolutions() {
 
     const [solutionHistory, setSolutionHistory] =
         useState([]);
+
+    const [activeTab, setActiveTab] =
+        useState("solutions");
+
+    const [selectedProblem, setSelectedProblem] =
+        useState(null);
+
+    const [assignedProposal, setAssignedProposal] =
+        useState(null);
+
+    const [problemLoading, setProblemLoading] =
+        useState(false);
+
+    const [proposalLoading, setProposalLoading] =
+        useState(false);
+
+    const [problemError, setProblemError] =
+        useState("");
+
+    const [proposalError, setProposalError] =
+        useState("");
 
     const [loading, setLoading] =
         useState(true);
@@ -90,58 +119,140 @@ function AdminPendingSolutions() {
 
 
     /* =========================================================
-       OPEN SOLUTION
-    ========================================================= */
+   OPEN SOLUTION
+========================================================= */
 
     const handleOpenSolution =
         async (solution) => {
 
-            try {
+            setSelectedSolution(solution);
 
-                setSelectedSolution(solution);
+            // Automatically open tab 3
+            setActiveTab("solutions");
 
-                setSolutionHistory([]);
+            setSolutionHistory([]);
+            setSelectedProblem(null);
+            setAssignedProposal(null);
 
-                setHistoryLoading(true);
+            setHistoryLoading(true);
+            setProblemLoading(true);
+            setProposalLoading(true);
 
-                setHistoryError("");
+            setHistoryError("");
+            setProblemError("");
+            setProposalError("");
+            setActionError("");
+            setAdminFeedback("");
 
-                setActionError("");
 
-                setAdminFeedback("");
+            /* =================================================
+               LOAD SOLUTION HISTORY
+            ================================================= */
 
-                const response =
-                    await getSolutionsForProposal(
-                        solution.proposal_id
+            getSolutionsForProposal(
+                solution.proposal_id
+            )
+                .then((response) => {
+                    setSolutionHistory(
+                        response?.data || []
+                    );
+                })
+                .catch((err) => {
+
+                    console.error(
+                        "Load solution history error:",
+                        err
                     );
 
-                setSolutionHistory(
-                    response?.data || []
-                );
+                    setHistoryError(
+                        err?.response?.data?.message ||
+                        "Unable to load solution history."
+                    );
 
-            } catch (err) {
+                })
+                .finally(() => {
+                    setHistoryLoading(false);
+                });
 
-                console.error(
-                    "Load solution history error:",
-                    err
-                );
 
-                setHistoryError(
-                    err?.response?.data?.message ||
-                    "Unable to load solution history."
-                );
+            /* =================================================
+               LOAD PROBLEM DETAIL
+            ================================================= */
 
-            } finally {
+            getProblemReportById(
+                solution.report_id
+            )
+                .then((response) => {
 
-                setHistoryLoading(false);
+                    setSelectedProblem(
+                        response?.data || null
+                    );
 
-            }
+                })
+                .catch((err) => {
+
+                    console.error(
+                        "Load problem detail error:",
+                        err
+                    );
+
+                    setProblemError(
+                        err?.response?.data?.message ||
+                        "Unable to load problem details."
+                    );
+
+                })
+                .finally(() => {
+                    setProblemLoading(false);
+                });
+
+
+            /* =================================================
+               LOAD ASSIGNED TEAM PROPOSAL
+            ================================================= */
+
+            getProposalsForReport(
+                solution.report_id
+            )
+                .then((response) => {
+
+                    const proposals =
+                        response?.data || [];
+
+                    const matchingProposal =
+                        proposals.find(
+                            (proposal) =>
+                                proposal.proposal_id ===
+                                solution.proposal_id
+                        );
+
+                    setAssignedProposal(
+                        matchingProposal || null
+                    );
+
+                })
+                .catch((err) => {
+
+                    console.error(
+                        "Load assigned proposal error:",
+                        err
+                    );
+
+                    setProposalError(
+                        err?.response?.data?.message ||
+                        "Unable to load the assigned team proposal."
+                    );
+
+                })
+                .finally(() => {
+                    setProposalLoading(false);
+                });
         };
 
 
     /* =========================================================
-       CLOSE MODAL
-    ========================================================= */
+   CLOSE MODAL
+========================================================= */
 
     const handleClose = () => {
 
@@ -150,9 +261,23 @@ function AdminPendingSolutions() {
         }
 
         setSelectedSolution(null);
+
         setSolutionHistory([]);
+
+        setSelectedProblem(null);
+
+        setAssignedProposal(null);
+
+        setActiveTab("solutions");
+
         setHistoryError("");
+
+        setProblemError("");
+
+        setProposalError("");
+
         setActionError("");
+
         setAdminFeedback("");
     };
 
@@ -355,6 +480,40 @@ function AdminPendingSolutions() {
                 return status || "Unknown";
 
         }
+    };
+
+
+    const formatProblemValue = (value) => {
+
+        if (value === true) {
+            return "Yes";
+        }
+
+        if (value === false) {
+            return "No";
+        }
+
+        if (Array.isArray(value)) {
+            return value
+                .map((item) =>
+                    String(item)
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (char) =>
+                            char.toUpperCase()
+                        )
+                )
+                .join(", ");
+        }
+
+        if (typeof value === "string") {
+            return value
+                .replace(/_/g, " ")
+                .replace(/\b\w/g, (char) =>
+                    char.toUpperCase()
+                );
+        }
+
+        return String(value);
     };
 
 
@@ -1096,114 +1255,113 @@ function AdminPendingSolutions() {
 
 
             {/* =================================================
-                SOLUTION REVIEW MODAL
-            ================================================= */}
+    SOLUTION REVIEW MODAL
+================================================= */}
 
             {selectedSolution && (
-
                 <div
                     className="
-                        fixed
-                        inset-0
+            fixed
+            inset-0
+            z-[100]
 
-                        z-[100]
+            flex
+            items-center
+            justify-center
 
-                        flex
-                        items-center
-                        justify-center
+            bg-[#0b2117]/60
 
-                        bg-[#0b2117]/60
-
-                        p-4
-                        sm:p-6
-                    "
+            p-4
+            sm:p-6
+        "
                 >
 
                     <div
                         className="
-                            relative
+                relative
 
-                            w-full
-                            max-w-[1050px]
+                w-full
+                max-w-[1050px]
 
-                            max-h-[92vh]
+                max-h-[92vh]
+                overflow-y-auto
 
-                            overflow-y-auto
+                rounded-[6px]
 
-                            rounded-[6px]
+                border
+                border-[#dce4de]
 
-                            bg-white
+                bg-white
 
-                            shadow-[0_25px_80px_rgba(0,0,0,0.25)]
-                        "
+                shadow-[0_25px_80px_rgba(20,50,35,0.22)]
+            "
                     >
 
                         {/* =================================================
-                            HEADER
-                        ================================================= */}
+                HEADER
+            ================================================= */}
 
                         <div
                             className="
-                                sticky
-                                top-0
-                                z-10
+                    sticky
+                    top-0
+                    z-30
 
-                                flex
-                                items-start
-                                justify-between
+                    flex
+                    items-start
+                    justify-between
 
-                                gap-5
+                    gap-5
 
-                                px-8
-                                py-6
+                    px-7
+                    py-6
 
-                                border-b
-                                border-[#dce4de]
+                    border-b
+                    border-[#e3e9e5]
 
-                                bg-white
-                            "
+                    bg-white
+                "
                         >
 
                             <div>
 
-                                <p
+                                <span
                                     className="
-                                        mb-2
+                            block
+                            mb-2
 
-                                        text-[#087542]
+                            text-[#087542]
+                            text-[9px]
+                            font-extrabold
 
-                                        text-[10px]
-                                        font-extrabold
-
-                                        tracking-[0.18em]
-                                    "
+                            tracking-[0.18em]
+                        "
                                 >
                                     SOLUTION REVIEW
-                                </p>
+                                </span>
 
                                 <h2
                                     className="
-                                        text-[#17211b]
+                            text-[#17211b]
 
-                                        text-[30px]
-                                        leading-none
+                            text-[30px]
+                            leading-none
 
-                                        font-extrabold
+                            font-extrabold
 
-                                        tracking-[-0.04em]
-                                    "
+                            tracking-[-0.04em]
+                        "
                                 >
                                     {selectedSolution.solution_id}
                                 </h2>
 
                                 <p
                                     className="
-                                        mt-2
+                            mt-2
 
-                                        text-[#718078]
-
-                                        text-[13px]
-                                    "
+                            text-[#718078]
+                            text-[13px]
+                        "
                                 >
                                     Case{" "}
                                     {selectedSolution.report_id}
@@ -1215,31 +1373,37 @@ function AdminPendingSolutions() {
                             <button
                                 type="button"
                                 onClick={handleClose}
+                                disabled={actionLoading}
                                 className="
-                                    w-10
-                                    h-10
+                        w-10
+                        h-10
 
-                                    flex
-                                    items-center
-                                    justify-center
+                        shrink-0
 
-                                    shrink-0
+                        flex
+                        items-center
+                        justify-center
 
-                                    rounded-full
+                        rounded-full
 
-                                    border
-                                    border-[#dce4de]
+                        border
+                        border-[#dce5df]
 
-                                    bg-white
+                        bg-white
 
-                                    text-[#66736b]
+                        text-[#718078]
+                        text-[18px]
 
-                                    text-[20px]
+                        cursor-pointer
 
-                                    cursor-pointer
+                        transition
 
-                                    hover:bg-[#f5f8f6]
-                                "
+                        hover:bg-[#f5f8f6]
+                        hover:text-[#17211b]
+
+                        disabled:opacity-50
+                        disabled:cursor-not-allowed
+                    "
                             >
                                 ×
                             </button>
@@ -1248,57 +1412,113 @@ function AdminPendingSolutions() {
 
 
                         {/* =================================================
-                            SUMMARY
-                        ================================================= */}
+                SUMMARY
+            ================================================= */}
 
                         <div
                             className="
-                                px-8
-                                pt-8
-                            "
+                    px-7
+                    pt-6
+                "
                         >
 
                             <div
                                 className="
-                                    grid
-                                    grid-cols-1
+                        overflow-hidden
 
-                                    gap-4
+                        rounded-[4px]
 
-                                    sm:grid-cols-2
-                                    lg:grid-cols-4
-                                "
+                        border
+                        border-[#dce5df]
+                    "
                             >
 
-                                <InfoField
-                                    label="Case"
-                                    value={
-                                        selectedSolution.report_id
-                                    }
-                                />
+                                <div
+                                    className="
+                            grid
+                            grid-cols-1
 
-                                <InfoField
-                                    label="Team"
-                                    value={
-                                        selectedSolution.team_id
-                                    }
-                                />
+                            sm:grid-cols-2
+                            lg:grid-cols-4
+                        "
+                                >
 
-                                <InfoField
-                                    label="Proposal"
-                                    value={
-                                        selectedSolution.proposal_id
-                                    }
-                                />
+                                    {[
+                                        [
+                                            "CASE",
+                                            selectedSolution.report_id,
+                                        ],
+                                        [
+                                            "TEAM",
+                                            selectedSolution.team_id,
+                                        ],
+                                        [
+                                            "PROPOSAL",
+                                            selectedSolution.proposal_id,
+                                        ],
+                                        [
+                                            "SUBMITTED",
+                                            formatDateTime(
+                                                selectedSolution.submitted_at
+                                            ),
+                                        ],
+                                    ].map(
+                                        ([label, value], index) => (
+                                            <div
+                                                key={label}
+                                                className={`
+                                        px-4
+                                        py-4
 
-                                <InfoField
-                                    label="Submitted"
-                                    value={
-                                        formatDateTime(
-                                            selectedSolution.submitted_at
+                                        bg-[#f7faf8]
+
+                                        ${index <
+                                                        3
+                                                        ? "lg:border-r border-[#dce5df]"
+                                                        : ""
+                                                    }
+
+                                        border-b
+                                        lg:border-b-0
+                                        last:border-b-0
+                                        border-[#dce5df]
+                                    `}
+                                            >
+
+                                                <span
+                                                    className="
+                                            block
+                                            mb-2
+
+                                            text-[#718078]
+                                            text-[9px]
+                                            font-extrabold
+
+                                            tracking-[0.12em]
+                                        "
+                                                >
+                                                    {label}
+                                                </span>
+
+                                                <strong
+                                                    className="
+                                            block
+
+                                            text-[#17211b]
+                                            text-[13px]
+                                            font-bold
+
+                                            break-all
+                                        "
+                                                >
+                                                    {value || "—"}
+                                                </strong>
+
+                                            </div>
                                         )
-                                    }
-                                />
+                                    )}
+
+                                </div>
 
                             </div>
 
@@ -1306,720 +1526,1748 @@ function AdminPendingSolutions() {
 
 
                         {/* =================================================
-                            CONTENT
-                        ================================================= */}
+                TABS
+            ================================================= */}
 
                         <div
                             className="
-                                px-8
-                                py-8
-                            "
+                    sticky
+                    top-[105px]
+                    z-20
+
+                    mt-6
+
+                    px-7
+
+                    border-b
+                    border-[#dce4de]
+
+                    bg-white
+                "
                         >
 
-                            {/* HISTORY */}
+                            <div
+                                className="
+                        flex
 
-                            <div>
+                        overflow-x-auto
+                    "
+                            >
 
-                                <div
-                                    className="
-                                        flex
-                                        items-center
-                                        justify-between
+                                {[
+                                    {
+                                        id: "problem",
+                                        label: "Problem Detail",
+                                    },
+                                    {
+                                        id: "proposal",
+                                        label: "Team Proposal",
+                                    },
+                                    {
+                                        id: "solutions",
+                                        label: "Solutions",
+                                    },
+                                ].map((tab) => (
 
-                                        gap-4
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() =>
+                                            setActiveTab(tab.id)
+                                        }
+                                        className={`
+                                relative
 
-                                        mb-5
+                                shrink-0
+
+                                px-5
+                                py-4
+
+                                text-[10px]
+                                font-extrabold
+
+                                tracking-[0.1em]
+
+                                cursor-pointer
+
+                                transition
+
+                                ${activeTab ===
+                                                tab.id
+                                                ? "text-[#087542]"
+                                                : "text-[#718078] hover:text-[#17211b]"
+                                            }
+
+                                after:absolute
+                                after:left-0
+                                after:right-0
+                                after:bottom-[-1px]
+                                after:h-[2px]
+
+                                ${activeTab ===
+                                                tab.id
+                                                ? "after:bg-[#087542]"
+                                                : "after:bg-transparent"
+                                            }
+                            `}
+                                    >
+                                        {tab.label}
+                                    </button>
+
+                                ))}
+
+                            </div>
+
+                        </div>
+
+
+                        {/* =================================================
+                TAB CONTENT
+            ================================================= */}
+
+                        <div
+                            className="
+                    px-7
+                    py-7
+                "
+                        >
+
+
+                            {/* =================================================
+                    PROBLEM DETAIL
+                ================================================= */}
+
+                            {activeTab === "problem" && (
+
+                                <div>
+
+                                    {problemLoading && (
+                                        <div
+                                            className="
+                                    py-20
+
+                                    flex
+                                    flex-col
+                                    items-center
+                                "
+                                        >
+
+                                            <div
+                                                className="
+                                        w-9
+                                        h-9
+
+                                        rounded-full
+
+                                        border-4
+                                        border-[#dce8e0]
+                                        border-t-[#087542]
+
+                                        animate-spin
                                     "
-                                >
+                                            />
 
-                                    <h3
-                                        className="
-                                            text-[#17211b]
+                                            <p
+                                                className="
+                                        mt-4
 
-                                            text-[18px]
-                                            font-extrabold
-                                        "
-                                    >
-                                        Solution History
-                                    </h3>
+                                        text-[#718078]
+                                        text-[13px]
+                                    "
+                                            >
+                                                Loading problem details...
+                                            </p>
 
-                                    <span
-                                        className="
-                                            px-3
-                                            py-1.5
-
-                                            rounded-full
-
-                                            bg-[#eaf4ee]
-
-                                            text-[#087542]
-
-                                            text-[11px]
-                                            font-extrabold
-                                        "
-                                    >
-                                        {
-                                            solutionHistory.length
-                                        }{" "}
-                                        {solutionHistory.length ===
-                                        1
-                                            ? "submission"
-                                            : "submissions"}
-                                    </span>
-
-                                </div>
-
-
-                                {historyLoading && (
-
-                                    <div
-                                        className="
-                                            py-12
-
-                                            flex
-                                            flex-col
-                                            items-center
-                                        "
-                                    >
-
-                                        <div
-                                            className="
-                                                w-9
-                                                h-9
-
-                                                rounded-full
-
-                                                border-4
-                                                border-[#dce8e0]
-                                                border-t-[#087542]
-
-                                                animate-spin
-                                            "
-                                        />
-
-                                        <p
-                                            className="
-                                                mt-4
-
-                                                text-[#718078]
-
-                                                text-[13px]
-                                            "
-                                        >
-                                            Loading solution history...
-                                        </p>
-
-                                    </div>
-
-                                )}
-
-
-                                {!historyLoading &&
-                                    historyError && (
-
-                                        <div
-                                            className="
-                                                p-5
-
-                                                rounded-[5px]
-
-                                                border
-                                                border-[#f0cccc]
-
-                                                bg-[#fff6f6]
-
-                                                text-[#c62828]
-
-                                                text-[13px]
-                                                font-bold
-                                            "
-                                        >
-                                            {historyError}
                                         </div>
-
                                     )}
 
 
-                                {!historyLoading &&
-                                    !historyError &&
-                                    solutionHistory.length ===
-                                        0 && (
+                                    {!problemLoading &&
+                                        problemError && (
+                                            <div
+                                                className="
+                                        p-5
 
-                                        <div
-                                            className="
-                                                p-6
+                                        rounded-[4px]
 
-                                                rounded-[5px]
+                                        border
+                                        border-[#f0cccc]
 
-                                                border
-                                                border-[#dce4de]
+                                        bg-[#fff6f6]
 
-                                                bg-[#f9fbfa]
-
-                                                text-[#718078]
-
-                                                text-[13px]
-
-                                                text-center
-                                            "
-                                        >
-                                            No solution history found.
-                                        </div>
-
-                                    )}
+                                        text-[#c62828]
+                                        text-[13px]
+                                        font-bold
+                                    "
+                                            >
+                                                {problemError}
+                                            </div>
+                                        )}
 
 
-                                {!historyLoading &&
-                                    !historyError &&
-                                    solutionHistory.length >
-                                        0 && (
+                                    {!problemLoading &&
+                                        !problemError &&
+                                        selectedProblem && (
+                                            <div>
 
-                                        <div
-                                            className="
-                                                space-y-5
-                                            "
-                                        >
+                                                {(() => {
 
-                                            {solutionHistory.map(
-                                                (historyItem) => (
+                                                    const renderTable =
+                                                        (fields) => {
 
-                                                    <div
-                                                        key={
-                                                            historyItem.solution_id
-                                                        }
-                                                        className="
-                                                            p-6
+                                                            const visible =
+                                                                fields.filter(
+                                                                    ([, value]) =>
+                                                                        value !==
+                                                                        undefined &&
+                                                                        value !==
+                                                                        null &&
+                                                                        value !==
+                                                                        "" &&
+                                                                        value !==
+                                                                        "NOT_STATED"
+                                                                );
 
-                                                            rounded-[5px]
+                                                            if (
+                                                                visible.length ===
+                                                                0
+                                                            ) {
+                                                                return null;
+                                                            }
 
-                                                            border
-                                                            border-[#dce4de]
-
-                                                            bg-white
-                                                        "
-                                                    >
-
-                                                        <div
-                                                            className="
-                                                                flex
-                                                                flex-col
-
-                                                                gap-3
-
-                                                                md:flex-row
-                                                                md:items-start
-                                                                md:justify-between
-                                                            "
-                                                        >
-
-                                                            <div>
-
-                                                                <span
-                                                                    className="
-                                                                        block
-
-                                                                        text-[#718078]
-
-                                                                        text-[10px]
-                                                                        font-extrabold
-
-                                                                        tracking-[0.14em]
-                                                                    "
-                                                                >
-                                                                    REVIEW CYCLE
-                                                                </span>
-
-                                                                <h4
-                                                                    className="
-                                                                        mt-2
-
-                                                                        text-[#17211b]
-
-                                                                        text-[17px]
-                                                                        font-extrabold
-                                                                    "
-                                                                >
-                                                                    Cycle{" "}
-                                                                    {
-                                                                        historyItem.review_cycle ||
-                                                                        1
-                                                                    }
-                                                                </h4>
-
-                                                            </div>
-
-
-                                                            <span
-                                                                className="
-                                                                    w-fit
-
-                                                                    px-3
-                                                                    py-1.5
-
-                                                                    rounded-full
-
-                                                                    bg-[#fff8e8]
-
-                                                                    text-[#9a6b00]
-
-                                                                    text-[10px]
-                                                                    font-extrabold
-                                                                "
-                                                            >
-                                                                {
-                                                                    getStatusLabel(
-                                                                        historyItem.status
-                                                                    )
-                                                                }
-                                                            </span>
-
-                                                        </div>
-
-
-                                                        {/* SOLUTION */}
-
-                                                        <div
-                                                            className="
-                                                                mt-6
-                                                            "
-                                                        >
-
-                                                            <span
-                                                                className="
-                                                                    block
-
-                                                                    mb-2
-
-                                                                    text-[#718078]
-
-                                                                    text-[10px]
-                                                                    font-extrabold
-
-                                                                    tracking-[0.12em]
-                                                                "
-                                                            >
-                                                                SOLUTION
-                                                            </span>
-
-                                                            <div
-                                                                className="
-                                                                    p-5
-
-                                                                    rounded-[5px]
-
-                                                                    border
-                                                                    border-[#e2e9e4]
-
-                                                                    bg-[#f9fbfa]
-
-                                                                    text-[#4f5d55]
-
-                                                                    text-[14px]
-                                                                    leading-[1.8]
-
-                                                                    whitespace-pre-wrap
-                                                                "
-                                                            >
-                                                                {
-                                                                    historyItem.solution_text
-                                                                }
-                                                            </div>
-
-                                                        </div>
-
-
-                                                        {/* ATTACHMENTS */}
-
-                                                        {historyItem.attachments &&
-                                                            historyItem
-                                                                .attachments
-                                                                .length >
-                                                                0 && (
-
+                                                            return (
                                                                 <div
                                                                     className="
-                                                                        mt-6
-                                                                    "
+                                                            overflow-hidden
+
+                                                            rounded-[4px]
+
+                                                            border
+                                                            border-[#dce5df]
+                                                        "
                                                                 >
 
-                                                                    <span
-                                                                        className="
-                                                                            block
+                                                                    {visible.map(
+                                                                        (
+                                                                            [
+                                                                                label,
+                                                                                value,
+                                                                            ],
+                                                                            index
+                                                                        ) => (
 
-                                                                            mb-3
+                                                                            <div
+                                                                                key={
+                                                                                    label
+                                                                                }
+                                                                                className={`
+                                                                        grid
+                                                                        grid-cols-1
+                                                                        sm:grid-cols-[250px_1fr]
+
+                                                                        ${index <
+                                                                                        visible.length -
+                                                                                        1
+                                                                                        ? "border-b border-[#e3e9e5]"
+                                                                                        : ""
+                                                                                    }
+                                                                    `}
+                                                                            >
+
+                                                                                <div
+                                                                                    className="
+                                                                            px-4
+                                                                            py-3.5
+
+                                                                            bg-[#f7faf8]
 
                                                                             text-[#718078]
-
-                                                                            text-[10px]
+                                                                            text-[9px]
                                                                             font-extrabold
 
-                                                                            tracking-[0.12em]
+                                                                            tracking-[0.1em]
                                                                         "
-                                                                    >
-                                                                        ATTACHMENTS
-                                                                    </span>
-
-                                                                    <div
-                                                                        className="
-                                                                            space-y-2
-                                                                        "
-                                                                    >
-
-                                                                        {historyItem.attachments.map(
-                                                                            (
-                                                                                attachment,
-                                                                                index
-                                                                            ) => (
-
-                                                                                <a
-                                                                                    key={
-                                                                                        attachment._id ||
-                                                                                        `${attachment.name}-${index}`
-                                                                                    }
-                                                                                    href={
-                                                                                        attachment.url
-                                                                                    }
-                                                                                    target="_blank"
-                                                                                    rel="noreferrer"
-                                                                                    className="
-                                                                                        flex
-                                                                                        items-center
-                                                                                        justify-between
-
-                                                                                        gap-4
-
-                                                                                        p-4
-
-                                                                                        rounded-[4px]
-
-                                                                                        border
-                                                                                        border-[#dce4de]
-
-                                                                                        bg-white
-
-                                                                                        no-underline
-
-                                                                                        hover:bg-[#f5f8f6]
-                                                                                    "
                                                                                 >
+                                                                                    {
+                                                                                        label
+                                                                                    }
+                                                                                </div>
 
-                                                                                    <div
-                                                                                        className="
-                                                                                            min-w-0
-                                                                                        "
-                                                                                    >
+                                                                                <div
+                                                                                    className="
+                                                                            px-4
+                                                                            py-3.5
 
-                                                                                        <span
-                                                                                            className="
-                                                                                                block
+                                                                            text-[#46534b]
+                                                                            text-[13px]
+                                                                            font-semibold
+                                                                            leading-[1.6]
 
-                                                                                                truncate
+                                                                            break-words
+                                                                        "
+                                                                                >
+                                                                                    {formatProblemValue(
+                                                                                        value
+                                                                                    )}
+                                                                                </div>
 
-                                                                                                text-[#33423a]
+                                                                            </div>
 
-                                                                                                text-[13px]
-                                                                                                font-semibold
-                                                                                            "
-                                                                                        >
-                                                                                            {
-                                                                                                attachment.name
-                                                                                            }
-                                                                                        </span>
+                                                                        )
+                                                                    )}
 
-                                                                                        <span
-                                                                                            className="
-                                                                                                block
+                                                                </div>
+                                                            );
+                                                        };
 
-                                                                                                mt-1
 
-                                                                                                text-[#718078]
+                                                    const renderSection =
+                                                        (
+                                                            title,
+                                                            fields
+                                                        ) => {
 
-                                                                                                text-[11px]
-                                                                                            "
-                                                                                        >
-                                                                                            {
-                                                                                                attachment.type
-                                                                                            }
-                                                                                        </span>
+                                                            const visible =
+                                                                fields.filter(
+                                                                    ([, value]) =>
+                                                                        value !==
+                                                                        undefined &&
+                                                                        value !==
+                                                                        null &&
+                                                                        value !==
+                                                                        "" &&
+                                                                        value !==
+                                                                        "NOT_STATED"
+                                                                );
 
-                                                                                    </div>
+                                                            if (
+                                                                visible.length ===
+                                                                0
+                                                            ) {
+                                                                return null;
+                                                            }
 
-                                                                                    <span
-                                                                                        className="
-                                                                                            shrink-0
+                                                            return (
+                                                                <section className="mb-8">
 
-                                                                                            text-[#087542]
+                                                                    <div className="mb-3">
 
-                                                                                            text-[11px]
-                                                                                            font-extrabold
-                                                                                        "
-                                                                                    >
-                                                                                        Open →
-                                                                                    </span>
+                                                                        <span
+                                                                            className="
+                                                                    block
 
-                                                                                </a>
+                                                                    text-[#087542]
+                                                                    text-[9px]
+                                                                    font-extrabold
 
-                                                                            )
-                                                                        )}
+                                                                    tracking-[0.15em]
+                                                                "
+                                                                        >
+                                                                            {title}
+                                                                        </span>
+
+                                                                        <div
+                                                                            className="
+                                                                    mt-2
+                                                                    h-px
+                                                                    bg-[#e3e9e5]
+                                                                "
+                                                                        />
 
                                                                     </div>
 
-                                                                </div>
+                                                                    {renderTable(
+                                                                        visible
+                                                                    )}
 
+                                                                </section>
+                                                            );
+                                                        };
+
+
+                                                    return (
+                                                        <>
+
+                                                            {renderSection(
+                                                                "CASE OVERVIEW",
+                                                                [
+                                                                    [
+                                                                        "REPORT TYPE",
+                                                                        selectedProblem.report_type,
+                                                                    ],
+                                                                    [
+                                                                        "REPORT DATE",
+                                                                        selectedProblem.report_date
+                                                                            ? formatDate(
+                                                                                selectedProblem.report_date
+                                                                            )
+                                                                            : null,
+                                                                    ],
+                                                                    [
+                                                                        "INCIDENT SERIAL NO.",
+                                                                        selectedProblem.incident_serial_no,
+                                                                    ],
+                                                                    [
+                                                                        "REPORT STAGE",
+                                                                        selectedProblem.report_stage,
+                                                                    ],
+                                                                    [
+                                                                        "INCIDENT CLASSIFICATION",
+                                                                        selectedProblem.incident_classification,
+                                                                    ],
+                                                                    [
+                                                                        "INCIDENT CATEGORY",
+                                                                        selectedProblem.incident_category,
+                                                                    ],
+                                                                    [
+                                                                        "INCIDENT TYPE",
+                                                                        selectedProblem.incident_type,
+                                                                    ],
+                                                                ]
+                                                            )}
+
+
+                                                            {renderSection(
+                                                                "INCIDENT INFORMATION",
+                                                                [
+                                                                    [
+                                                                        "ORGANISATION",
+                                                                        selectedProblem.organization,
+                                                                    ],
+                                                                    [
+                                                                        "SECTOR",
+                                                                        selectedProblem.sector,
+                                                                    ],
+                                                                    [
+                                                                        "SITE",
+                                                                        selectedProblem.site,
+                                                                    ],
+                                                                    [
+                                                                        "INCIDENT TIME",
+                                                                        selectedProblem.incident_time,
+                                                                    ],
+                                                                    [
+                                                                        "INCIDENT LOCATION",
+                                                                        selectedProblem.incident_location,
+                                                                    ],
+                                                                    [
+                                                                        "ACTIVITY",
+                                                                        selectedProblem.activity,
+                                                                    ],
+                                                                    [
+                                                                        "LOCATION",
+                                                                        selectedProblem.location,
+                                                                    ],
+                                                                    [
+                                                                        "EQUIPMENT",
+                                                                        selectedProblem.equipment,
+                                                                    ],
+                                                                    [
+                                                                        "HAZARD",
+                                                                        selectedProblem.hazard,
+                                                                    ],
+                                                                    [
+                                                                        "ENERGY SOURCE",
+                                                                        selectedProblem.energy_source,
+                                                                    ],
+                                                                    [
+                                                                        "EXPOSURE",
+                                                                        selectedProblem.exposure,
+                                                                    ],
+                                                                    [
+                                                                        "UNSAFE ACT / CONDITION",
+                                                                        selectedProblem.unsafe_act_condition,
+                                                                    ],
+                                                                    [
+                                                                        "BARRIER / CONTROL",
+                                                                        selectedProblem.barrier_or_control,
+                                                                    ],
+                                                                    [
+                                                                        "BARRIER FAILURE MODE",
+                                                                        selectedProblem.barrier_failure_mode,
+                                                                    ],
+                                                                    [
+                                                                        "BARRIER FUNCTION",
+                                                                        selectedProblem.barrier_function,
+                                                                    ],
+                                                                    [
+                                                                        "POTENTIAL CONSEQUENCE",
+                                                                        selectedProblem.potential_consequence,
+                                                                    ],
+                                                                ]
+                                                            )}
+
+
+                                                            {renderSection(
+                                                                "FACILITY & FIRE DETAILS",
+                                                                [
+                                                                    [
+                                                                        "FACILITY SHUTDOWN",
+                                                                        selectedProblem.facility_shutdown,
+                                                                    ],
+                                                                    [
+                                                                        "FACILITY OUTAGE",
+                                                                        selectedProblem.facility_outage,
+                                                                    ],
+                                                                    [
+                                                                        "FACILITY STATUS",
+                                                                        selectedProblem.facility_status,
+                                                                    ],
+                                                                    [
+                                                                        "FIRE DURATION (HOURS)",
+                                                                        selectedProblem.fire_duration_hours,
+                                                                    ],
+                                                                    [
+                                                                        "FIRE DURATION (MINUTES)",
+                                                                        selectedProblem.fire_duration_minutes,
+                                                                    ],
+                                                                ]
+                                                            )}
+
+
+                                                            {renderSection(
+                                                                "PEOPLE & LOSS",
+                                                                [
+                                                                    [
+                                                                        "FATALITIES — EMPLOYEES",
+                                                                        selectedProblem.fatalities?.employees,
+                                                                    ],
+                                                                    [
+                                                                        "FATALITIES — CONTRACTORS",
+                                                                        selectedProblem.fatalities?.contractors,
+                                                                    ],
+                                                                    [
+                                                                        "FATALITIES — OTHERS",
+                                                                        selectedProblem.fatalities?.others,
+                                                                    ],
+                                                                    [
+                                                                        "INJURIES — EMPLOYEES",
+                                                                        selectedProblem.injuries?.employees,
+                                                                    ],
+                                                                    [
+                                                                        "INJURIES — CONTRACTORS",
+                                                                        selectedProblem.injuries?.contractors,
+                                                                    ],
+                                                                    [
+                                                                        "INJURIES — OTHERS",
+                                                                        selectedProblem.injuries?.others,
+                                                                    ],
+                                                                    [
+                                                                        "MAN HOURS LOST — EMPLOYEES",
+                                                                        selectedProblem.man_hours_lost?.employees,
+                                                                    ],
+                                                                    [
+                                                                        "MAN HOURS LOST — CONTRACTORS",
+                                                                        selectedProblem.man_hours_lost?.contractors,
+                                                                    ],
+                                                                    [
+                                                                        "MAN HOURS LOST — OTHERS",
+                                                                        selectedProblem.man_hours_lost?.others,
+                                                                    ],
+                                                                    [
+                                                                        "DIRECT LOSS (₹ LAKHS)",
+                                                                        selectedProblem.direct_loss_in_lakhs,
+                                                                    ],
+                                                                    [
+                                                                        "INDIRECT LOSS",
+                                                                        selectedProblem.indirect_loss,
+                                                                    ],
+                                                                ]
+                                                            )}
+
+
+                                                            {renderSection(
+                                                                "CAUSE & AVOIDABILITY",
+                                                                [
+                                                                    [
+                                                                        "CAUSE OF INCIDENT",
+                                                                        selectedProblem.cause_of_incident,
+                                                                    ],
+                                                                    [
+                                                                        "LEAKAGE CAUSE",
+                                                                        selectedProblem.leakage_cause,
+                                                                    ],
+                                                                    [
+                                                                        "LEAKAGE CAUSE DETAILS",
+                                                                        selectedProblem.leakage_cause_details,
+                                                                    ],
+                                                                    [
+                                                                        "IGNITION CAUSE",
+                                                                        selectedProblem.ignition_cause,
+                                                                    ],
+                                                                    [
+                                                                        "IGNITION CAUSE DETAILS",
+                                                                        selectedProblem.ignition_cause_details,
+                                                                    ],
+                                                                    [
+                                                                        "AVOIDABLE",
+                                                                        selectedProblem.avoidable,
+                                                                    ],
+                                                                    [
+                                                                        "AVOIDANCE FACTORS",
+                                                                        selectedProblem.avoidance_factors,
+                                                                    ],
+                                                                ]
+                                                            )}
+
+
+                                                            {renderSection(
+                                                                "INVESTIGATION & FOLLOW-UP",
+                                                                [
+                                                                    [
+                                                                        "SIMILAR INCIDENT OCCURRED",
+                                                                        selectedProblem.similar_incident_occurred,
+                                                                    ],
+                                                                    [
+                                                                        "SIMILAR INCIDENT DESCRIPTION",
+                                                                        selectedProblem.similar_incident_description,
+                                                                    ],
+                                                                    [
+                                                                        "INTERNAL INVESTIGATION COMPLETED",
+                                                                        selectedProblem.internal_investigation_completed,
+                                                                    ],
+                                                                    [
+                                                                        "INTERNAL INVESTIGATION COMPLETION DATE",
+                                                                        selectedProblem.internal_investigation_completion_date
+                                                                            ? formatDate(
+                                                                                selectedProblem.internal_investigation_completion_date
+                                                                            )
+                                                                            : null,
+                                                                    ],
+                                                                    [
+                                                                        "INVESTIGATION REPORT SUBMITTED TO OISD",
+                                                                        selectedProblem.internal_investigation_report_submitted_to_oisd,
+                                                                    ],
+                                                                    [
+                                                                        "EXPECTED OISD SUBMISSION DATE",
+                                                                        selectedProblem.expected_oisd_submission_date
+                                                                            ? formatDate(
+                                                                                selectedProblem.expected_oisd_submission_date
+                                                                            )
+                                                                            : null,
+                                                                    ],
+                                                                ]
+                                                            )}
+
+
+                                                            {selectedProblem.report_text && (
+                                                                <section className="mb-8">
+
+                                                                    <div className="mb-3">
+
+                                                                        <span
+                                                                            className="
+                                                                    block
+
+                                                                    text-[#087542]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.15em]
+                                                                "
+                                                                        >
+                                                                            REPORT DESCRIPTION
+                                                                        </span>
+
+                                                                        <div
+                                                                            className="
+                                                                    mt-2
+                                                                    h-px
+                                                                    bg-[#e3e9e5]
+                                                                "
+                                                                        />
+
+                                                                    </div>
+
+                                                                    <div
+                                                                        className="
+                                                                px-5
+                                                                py-4
+
+                                                                rounded-[4px]
+
+                                                                border
+                                                                border-[#dce5df]
+
+                                                                bg-[#fbfcfb]
+
+                                                                text-[#46534b]
+                                                                text-[13px]
+                                                                leading-[1.75]
+
+                                                                whitespace-pre-wrap
+                                                            "
+                                                                    >
+                                                                        {
+                                                                            selectedProblem.report_text
+                                                                        }
+                                                                    </div>
+
+                                                                </section>
+                                                            )}
+
+
+                                                            {selectedProblem.actual_outcome && (
+                                                                <section>
+
+                                                                    <div className="mb-3">
+
+                                                                        <span
+                                                                            className="
+                                                                    block
+
+                                                                    text-[#087542]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.15em]
+                                                                "
+                                                                        >
+                                                                            ACTUAL OUTCOME
+                                                                        </span>
+
+                                                                        <div
+                                                                            className="
+                                                                    mt-2
+                                                                    h-px
+                                                                    bg-[#e3e9e5]
+                                                                "
+                                                                        />
+
+                                                                    </div>
+
+                                                                    <div
+                                                                        className="
+                                                                px-5
+                                                                py-4
+
+                                                                rounded-[4px]
+
+                                                                border
+                                                                border-[#dce5df]
+
+                                                                bg-[#fbfcfb]
+
+                                                                text-[#46534b]
+                                                                text-[13px]
+                                                                leading-[1.75]
+
+                                                                whitespace-pre-wrap
+                                                            "
+                                                                    >
+                                                                        {
+                                                                            selectedProblem.actual_outcome
+                                                                        }
+                                                                    </div>
+
+                                                                </section>
+                                                            )}
+
+                                                        </>
+                                                    );
+
+                                                })()}
+
+                                            </div>
+                                        )}
+
+                                </div>
+                            )}
+
+
+                            {/* =================================================
+                    TEAM PROPOSAL
+                ================================================= */}
+
+                            {activeTab === "proposal" && (
+
+                                <div>
+
+                                    {proposalLoading && (
+                                        <div
+                                            className="
+                                    py-20
+
+                                    flex
+                                    flex-col
+                                    items-center
+                                "
+                                        >
+
+                                            <div
+                                                className="
+                                        w-9
+                                        h-9
+
+                                        rounded-full
+
+                                        border-4
+                                        border-[#dce8e0]
+                                        border-t-[#087542]
+
+                                        animate-spin
+                                    "
+                                            />
+
+                                            <p
+                                                className="
+                                        mt-4
+
+                                        text-[#718078]
+                                        text-[13px]
+                                    "
+                                            >
+                                                Loading assigned proposal...
+                                            </p>
+
+                                        </div>
+                                    )}
+
+
+                                    {!proposalLoading &&
+                                        proposalError && (
+                                            <div
+                                                className="
+                                        p-5
+
+                                        rounded-[4px]
+
+                                        border
+                                        border-[#f0cccc]
+
+                                        bg-[#fff6f6]
+
+                                        text-[#c62828]
+                                        text-[13px]
+                                        font-bold
+                                    "
+                                            >
+                                                {proposalError}
+                                            </div>
+                                        )}
+
+
+                                    {!proposalLoading &&
+                                        !proposalError &&
+                                        !assignedProposal && (
+                                            <div
+                                                className="
+                                        p-8
+
+                                        rounded-[4px]
+
+                                        border
+                                        border-[#dce4de]
+
+                                        bg-[#f9fbfa]
+
+                                        text-[#718078]
+                                        text-[13px]
+
+                                        text-center
+                                    "
+                                            >
+                                                No matching team proposal was found
+                                                for this solution.
+                                            </div>
+                                        )}
+
+
+                                    {!proposalLoading &&
+                                        !proposalError &&
+                                        assignedProposal && (
+
+                                            <div>
+
+                                                {/* =================================================
+                                        ASSIGNED TEAM
+                                    ================================================= */}
+
+                                                <section className="mb-8">
+
+                                                    <div className="mb-3">
+
+                                                        <span
+                                                            className="
+                                                    block
+
+                                                    text-[#087542]
+                                                    text-[9px]
+                                                    font-extrabold
+
+                                                    tracking-[0.15em]
+                                                "
+                                                        >
+                                                            ASSIGNED TEAM
+                                                        </span>
+
+                                                        <div
+                                                            className="
+                                                    mt-2
+                                                    h-px
+                                                    bg-[#e3e9e5]
+                                                "
+                                                        />
+
+                                                    </div>
+
+                                                    <div
+                                                        className="
+                                                overflow-hidden
+
+                                                rounded-[4px]
+
+                                                border
+                                                border-[#dce5df]
+                                            "
+                                                    >
+
+                                                        {[
+                                                            [
+                                                                "TEAM",
+                                                                assignedProposal.team_name ||
+                                                                assignedProposal.team_id,
+                                                            ],
+                                                            [
+                                                                "TEAM ID",
+                                                                assignedProposal.team_id,
+                                                            ],
+                                                            [
+                                                                "TEAM LEADER EMAIL",
+                                                                assignedProposal.team_leader_email,
+                                                            ],
+                                                            [
+                                                                "PROPOSAL ID",
+                                                                assignedProposal.proposal_id,
+                                                            ],
+                                                            [
+                                                                "SUBMITTED",
+                                                                formatDateTime(
+                                                                    assignedProposal.createdAt
+                                                                ),
+                                                            ],
+                                                            [
+                                                                "STATUS",
+                                                                assignedProposal.status,
+                                                            ],
+                                                        ]
+                                                            .filter(
+                                                                ([, value]) =>
+                                                                    value !==
+                                                                    undefined &&
+                                                                    value !==
+                                                                    null &&
+                                                                    value !==
+                                                                    ""
+                                                            )
+                                                            .map(
+                                                                (
+                                                                    [
+                                                                        label,
+                                                                        value,
+                                                                    ],
+                                                                    index,
+                                                                    array
+                                                                ) => (
+
+                                                                    <div
+                                                                        key={
+                                                                            label
+                                                                        }
+                                                                        className={`
+                                                                grid
+                                                                grid-cols-1
+                                                                sm:grid-cols-[250px_1fr]
+
+                                                                ${index <
+                                                                                array.length -
+                                                                                1
+                                                                                ? "border-b border-[#e3e9e5]"
+                                                                                : ""
+                                                                            }
+                                                            `}
+                                                                    >
+
+                                                                        <div
+                                                                            className="
+                                                                    px-4
+                                                                    py-3.5
+
+                                                                    bg-[#f7faf8]
+
+                                                                    text-[#718078]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.1em]
+                                                                "
+                                                                        >
+                                                                            {
+                                                                                label
+                                                                            }
+                                                                        </div>
+
+                                                                        <div
+                                                                            className="
+                                                                    px-4
+                                                                    py-3.5
+
+                                                                    text-[#46534b]
+                                                                    text-[13px]
+                                                                    font-semibold
+
+                                                                    break-words
+                                                                "
+                                                                        >
+                                                                            {formatProblemValue(
+                                                                                value
+                                                                            )}
+                                                                        </div>
+
+                                                                    </div>
+
+                                                                )
                                                             )}
 
                                                     </div>
 
-                                                )
-                                            )}
+                                                </section>
 
-                                        </div>
 
-                                    )}
+                                                {/* =================================================
+                                        TEAM PROPOSAL
+                                    ================================================= */}
 
-                            </div>
+                                                {assignedProposal.solution_proposal && (
+
+                                                    <section>
+
+                                                        <div className="mb-3">
+
+                                                            <span
+                                                                className="
+                                                        block
+
+                                                        text-[#087542]
+                                                        text-[9px]
+                                                        font-extrabold
+
+                                                        tracking-[0.15em]
+                                                    "
+                                                            >
+                                                                TEAM PROPOSAL
+                                                            </span>
+
+                                                            <div
+                                                                className="
+                                                        mt-2
+                                                        h-px
+                                                        bg-[#e3e9e5]
+                                                    "
+                                                            />
+
+                                                        </div>
+
+                                                        <div
+                                                            className="
+                                                    px-5
+                                                    py-5
+
+                                                    rounded-[4px]
+
+                                                    border
+                                                    border-[#dce5df]
+
+                                                    bg-[#fbfcfb]
+
+                                                    text-[#46534b]
+                                                    text-[13px]
+                                                    leading-[1.8]
+
+                                                    whitespace-pre-wrap
+                                                "
+                                                        >
+                                                            {
+                                                                assignedProposal.solution_proposal
+                                                            }
+                                                        </div>
+
+                                                    </section>
+                                                )}
+
+                                            </div>
+                                        )}
+
+                                </div>
+                            )}
 
 
                             {/* =================================================
-                                ADMIN DECISION
-                            ================================================= */}
+                    SOLUTIONS
+                ================================================= */}
 
-                            {selectedSolution.status ===
-                                "pending_review" && (
+                            {activeTab === "solutions" && (
 
-                                <div
-                                    className="
-                                        mt-8
-
-                                        pt-8
-
-                                        border-t
-                                        border-[#dce4de]
-                                    "
-                                >
-
-                                    <h3
-                                        className="
-                                            text-[#17211b]
-
-                                            text-[18px]
-                                            font-extrabold
-                                        "
-                                    >
-                                        Admin Decision
-                                    </h3>
-
-                                    <p
-                                        className="
-                                            mt-2
-
-                                            text-[#718078]
-
-                                            text-[13px]
-                                            leading-[1.6]
-                                        "
-                                    >
-                                        Approve the solution to resolve
-                                        the case, or request changes from
-                                        the assigned team.
-                                    </p>
-
-
-                                    {/* FEEDBACK */}
+                                <div>
 
                                     <div
                                         className="
-                                            mt-5
-                                        "
+                                flex
+                                items-center
+                                justify-between
+
+                                gap-4
+
+                                mb-5
+                            "
                                     >
 
-                                        <label
+                                        <div>
+
+                                            <span
+                                                className="
+                                        block
+
+                                        text-[#087542]
+                                        text-[9px]
+                                        font-extrabold
+
+                                        tracking-[0.15em]
+                                    "
+                                            >
+                                                SOLUTION HISTORY
+                                            </span>
+
+                                            <h3
+                                                className="
+                                        mt-2
+
+                                        text-[#17211b]
+                                        text-[20px]
+                                        font-extrabold
+                                    "
+                                            >
+                                                Submitted Solutions
+                                            </h3>
+
+                                        </div>
+
+                                        <span
                                             className="
-                                                block
+                                    shrink-0
 
-                                                mb-2
+                                    px-3
+                                    py-1.5
 
-                                                text-[#718078]
+                                    rounded-full
 
-                                                text-[10px]
-                                                font-extrabold
+                                    bg-[#eaf4ee]
 
-                                                tracking-[0.12em]
-                                            "
+                                    text-[#087542]
+                                    text-[11px]
+                                    font-extrabold
+                                "
                                         >
-                                            ADMIN FEEDBACK
-                                        </label>
-
-                                        <textarea
-                                            value={
-                                                adminFeedback
-                                            }
-                                            onChange={(
-                                                event
-                                            ) =>
-                                                setAdminFeedback(
-                                                    event
-                                                        .target
-                                                        .value
-                                                )
-                                            }
-                                            disabled={
-                                                actionLoading
-                                            }
-                                            rows={4}
-                                            placeholder="Required when requesting changes..."
-                                            className="
-                                                w-full
-
-                                                resize-y
-
-                                                px-4
-                                                py-3
-
-                                                rounded-[4px]
-
-                                                border
-                                                border-[#dce4de]
-
-                                                bg-[#fbfcfb]
-
-                                                text-[#17211b]
-
-                                                text-[13px]
-                                                leading-[1.6]
-
-                                                outline-none
-
-                                                focus:border-[#087542]
-                                            "
-                                        />
+                                            {
+                                                solutionHistory.length
+                                            }{" "}
+                                            {solutionHistory.length ===
+                                                1
+                                                ? "submission"
+                                                : "submissions"}
+                                        </span>
 
                                     </div>
 
 
-                                    {/* ACTION ERROR */}
+                                    {/* =================================================
+                            EXISTING HISTORY
+                        ================================================= */}
 
-                                    {actionError && (
-
+                                    {historyLoading && (
                                         <div
                                             className="
-                                                mt-4
+                                    py-12
 
-                                                p-4
-
-                                                rounded-[4px]
-
-                                                border
-                                                border-[#f0cccc]
-
-                                                bg-[#fff6f6]
-
-                                                text-[#c62828]
-
-                                                text-[12px]
-                                                font-bold
-                                            "
+                                    flex
+                                    flex-col
+                                    items-center
+                                "
                                         >
-                                            {actionError}
-                                        </div>
 
+                                            <div
+                                                className="
+                                        w-9
+                                        h-9
+
+                                        rounded-full
+
+                                        border-4
+                                        border-[#dce8e0]
+                                        border-t-[#087542]
+
+                                        animate-spin
+                                    "
+                                            />
+
+                                            <p
+                                                className="
+                                        mt-4
+
+                                        text-[#718078]
+                                        text-[13px]
+                                    "
+                                            >
+                                                Loading solution history...
+                                            </p>
+
+                                        </div>
                                     )}
 
 
-                                    {/* BUTTONS */}
+                                    {!historyLoading &&
+                                        historyError && (
+                                            <div
+                                                className="
+                                        p-5
 
-                                    <div
-                                        className="
-                                            flex
-                                            flex-col-reverse
+                                        rounded-[4px]
 
-                                            gap-3
+                                        border
+                                        border-[#f0cccc]
 
-                                            mt-5
+                                        bg-[#fff6f6]
 
-                                            sm:flex-row
-                                            sm:justify-end
+                                        text-[#c62828]
+                                        text-[13px]
+                                        font-bold
+                                    "
+                                            >
+                                                {historyError}
+                                            </div>
+                                        )}
+
+
+                                    {!historyLoading &&
+                                        !historyError &&
+                                        solutionHistory.length ===
+                                        0 && (
+                                            <div
+                                                className="
+                                        p-8
+
+                                        rounded-[4px]
+
+                                        border
+                                        border-[#dce4de]
+
+                                        bg-[#f9fbfa]
+
+                                        text-[#718078]
+                                        text-[13px]
+
+                                        text-center
+                                    "
+                                            >
+                                                No solution history found.
+                                            </div>
+                                        )}
+
+
+                                    {!historyLoading &&
+                                        !historyError &&
+                                        solutionHistory.length >
+                                        0 && (
+
+                                            <div className="space-y-5">
+
+                                                {solutionHistory.map(
+                                                    (historyItem) => (
+
+                                                        <div
+                                                            key={
+                                                                historyItem.solution_id
+                                                            }
+                                                            className="
+                                                    overflow-hidden
+
+                                                    rounded-[5px]
+
+                                                    border
+                                                    border-[#dce4de]
+
+                                                    bg-white
+                                                "
+                                                        >
+
+                                                            {/* CYCLE HEADER */}
+
+                                                            <div
+                                                                className="
+                                                        flex
+                                                        flex-col
+
+                                                        gap-3
+
+                                                        md:flex-row
+                                                        md:items-center
+                                                        md:justify-between
+
+                                                        px-5
+                                                        py-4
+
+                                                        bg-[#f7faf8]
+
+                                                        border-b
+                                                        border-[#e3e9e5]
+                                                    "
+                                                            >
+
+                                                                <div>
+
+                                                                    <span
+                                                                        className="
+                                                                block
+
+                                                                text-[#718078]
+                                                                text-[9px]
+                                                                font-extrabold
+
+                                                                tracking-[0.14em]
+                                                            "
+                                                                    >
+                                                                        REVIEW CYCLE
+                                                                    </span>
+
+                                                                    <strong
+                                                                        className="
+                                                                block
+                                                                mt-1
+
+                                                                text-[#17211b]
+                                                                text-[17px]
+                                                                font-extrabold
+                                                            "
+                                                                    >
+                                                                        Cycle{" "}
+                                                                        {
+                                                                            historyItem.review_cycle ||
+                                                                            1
+                                                                        }
+                                                                    </strong>
+
+                                                                </div>
+
+
+                                                                <span
+                                                                    className="
+                                                            w-fit
+
+                                                            px-3
+                                                            py-1.5
+
+                                                            rounded-full
+
+                                                            bg-[#fff8e8]
+
+                                                            text-[#9a6b00]
+                                                            text-[10px]
+                                                            font-extrabold
+                                                        "
+                                                                >
+                                                                    {
+                                                                        getStatusLabel(
+                                                                            historyItem.status
+                                                                        )
+                                                                    }
+                                                                </span>
+
+                                                            </div>
+
+
+                                                            {/* SOLUTION */}
+
+                                                            <div className="p-5">
+
+                                                                <span
+                                                                    className="
+                                                            block
+                                                            mb-2
+
+                                                            text-[#718078]
+                                                            text-[9px]
+                                                            font-extrabold
+
+                                                            tracking-[0.12em]
+                                                        "
+                                                                >
+                                                                    SOLUTION
+                                                                </span>
+
+                                                                <div
+                                                                    className="
+                                                            px-5
+                                                            py-4
+
+                                                            rounded-[4px]
+
+                                                            border
+                                                            border-[#dce5df]
+
+                                                            bg-[#fbfcfb]
+
+                                                            text-[#46534b]
+                                                            text-[13px]
+                                                            leading-[1.8]
+
+                                                            whitespace-pre-wrap
+                                                        "
+                                                                >
+                                                                    {
+                                                                        historyItem.solution_text
+                                                                    }
+                                                                </div>
+
+
+                                                                {/* ATTACHMENTS */}
+
+                                                                {historyItem.attachments?.length >
+                                                                    0 && (
+
+                                                                        <div className="mt-5">
+
+                                                                            <span
+                                                                                className="
+                                                                    block
+                                                                    mb-3
+
+                                                                    text-[#718078]
+                                                                    text-[9px]
+                                                                    font-extrabold
+
+                                                                    tracking-[0.12em]
+                                                                "
+                                                                            >
+                                                                                ATTACHMENTS
+                                                                            </span>
+
+                                                                            <div className="space-y-2">
+
+                                                                                {historyItem.attachments.map(
+                                                                                    (
+                                                                                        attachment,
+                                                                                        index
+                                                                                    ) => (
+
+                                                                                        <a
+                                                                                            key={
+                                                                                                attachment._id ||
+                                                                                                `${attachment.name}-${index}`
+                                                                                            }
+                                                                                            href={
+                                                                                                attachment.url
+                                                                                            }
+                                                                                            target="_blank"
+                                                                                            rel="noreferrer"
+                                                                                            className="
+                                                                                flex
+                                                                                items-center
+                                                                                justify-between
+
+                                                                                gap-4
+
+                                                                                px-4
+                                                                                py-3
+
+                                                                                rounded-[4px]
+
+                                                                                border
+                                                                                border-[#dce4de]
+
+                                                                                bg-white
+
+                                                                                no-underline
+
+                                                                                hover:bg-[#f5f8f6]
+                                                                            "
+                                                                                        >
+
+                                                                                            <div className="min-w-0">
+
+                                                                                                <span
+                                                                                                    className="
+                                                                                        block
+                                                                                        truncate
+
+                                                                                        text-[#33423a]
+                                                                                        text-[13px]
+                                                                                        font-semibold
+                                                                                    "
+                                                                                                >
+                                                                                                    {
+                                                                                                        attachment.name
+                                                                                                    }
+                                                                                                </span>
+
+                                                                                                {attachment.type && (
+                                                                                                    <span
+                                                                                                        className="
+                                                                                            block
+                                                                                            mt-1
+
+                                                                                            text-[#718078]
+                                                                                            text-[10px]
+                                                                                        "
+                                                                                                    >
+                                                                                                        {
+                                                                                                            attachment.type
+                                                                                                        }
+                                                                                                    </span>
+                                                                                                )}
+
+                                                                                            </div>
+
+                                                                                            <span
+                                                                                                className="
+                                                                                    shrink-0
+
+                                                                                    text-[#087542]
+                                                                                    text-[11px]
+                                                                                    font-extrabold
+                                                                                "
+                                                                                            >
+                                                                                                Open →
+                                                                                            </span>
+
+                                                                                        </a>
+
+                                                                                    )
+                                                                                )}
+
+                                                                            </div>
+
+                                                                        </div>
+                                                                    )}
+
+                                                            </div>
+
+                                                        </div>
+
+                                                    )
+                                                )}
+
+                                            </div>
+                                        )}
+
+
+                                    {/* =================================================
+                            ADMIN DECISION
+                        ================================================= */}
+
+                                    {selectedSolution.status ===
+                                        "pending_review" && (
+
+                                            <div
+                                                className="
+                                    mt-8
+                                    pt-7
+
+                                    border-t
+                                    border-[#dce4de]
+                                "
+                                            >
+
+                                                <div className="mb-5">
+
+                                                    <span
+                                                        className="
+                                            block
+
+                                            text-[#087542]
+                                            text-[9px]
+                                            font-extrabold
+
+                                            tracking-[0.15em]
                                         "
-                                    >
+                                                    >
+                                                        ADMIN DECISION
+                                                    </span>
 
-                                        <button
-                                            type="button"
-                                            onClick={
-                                                handleRequestChanges
-                                            }
-                                            disabled={
-                                                actionLoading
-                                            }
-                                            className="
-                                                px-6
-                                                py-3.5
+                                                    <p
+                                                        className="
+                                            mt-2
 
-                                                rounded-[3px]
+                                            text-[#718078]
+                                            text-[13px]
+                                            leading-[1.6]
+                                        "
+                                                    >
+                                                        Approve the latest solution to
+                                                        resolve the case, or request
+                                                        changes from the assigned team.
+                                                    </p>
 
-                                                border
-                                                border-[#e5caca]
-
-                                                bg-white
-
-                                                text-[#c62828]
-
-                                                text-[11px]
-                                                font-extrabold
-
-                                                cursor-pointer
-
-                                                hover:bg-[#fff6f6]
-
-                                                disabled:opacity-50
-                                                disabled:cursor-not-allowed
-                                            "
-                                        >
-                                            {actionLoading
-                                                ? "Processing..."
-                                                : "Request Changes"}
-                                        </button>
+                                                </div>
 
 
-                                        <button
-                                            type="button"
-                                            onClick={
-                                                handleApprove
-                                            }
-                                            disabled={
-                                                actionLoading
-                                            }
-                                            className="
-                                                px-7
-                                                py-3.5
+                                                <textarea
+                                                    value={
+                                                        adminFeedback
+                                                    }
+                                                    onChange={(event) =>
+                                                        setAdminFeedback(
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        actionLoading
+                                                    }
+                                                    rows={4}
+                                                    placeholder="Required when requesting changes..."
+                                                    className="
+                                        w-full
 
-                                                rounded-[3px]
+                                        resize-y
 
-                                                border-0
+                                        px-4
+                                        py-3
 
-                                                bg-[#087542]
+                                        rounded-[4px]
 
-                                                text-white
+                                        border
+                                        border-[#dce4de]
 
-                                                text-[11px]
-                                                font-extrabold
+                                        bg-[#fbfcfb]
 
-                                                cursor-pointer
+                                        text-[#17211b]
+                                        text-[13px]
+                                        leading-[1.6]
 
-                                                hover:bg-[#065c38]
+                                        outline-none
 
-                                                disabled:opacity-50
-                                                disabled:cursor-not-allowed
-                                            "
-                                        >
-                                            {actionLoading
-                                                ? "Processing..."
-                                                : "Approve Solution"}
-                                        </button>
+                                        focus:border-[#087542]
 
-                                    </div>
+                                        disabled:opacity-60
+                                    "
+                                                />
+
+
+                                                {actionError && (
+                                                    <div
+                                                        className="
+                                            mt-4
+
+                                            p-4
+
+                                            rounded-[4px]
+
+                                            border
+                                            border-[#f0cccc]
+
+                                            bg-[#fff6f6]
+
+                                            text-[#c62828]
+                                            text-[12px]
+                                            font-bold
+                                        "
+                                                    >
+                                                        {actionError}
+                                                    </div>
+                                                )}
+
+
+                                                <div
+                                                    className="
+                                        flex
+                                        flex-col-reverse
+
+                                        gap-3
+
+                                        mt-5
+
+                                        sm:flex-row
+                                        sm:justify-end
+                                    "
+                                                >
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={
+                                                            handleRequestChanges
+                                                        }
+                                                        disabled={
+                                                            actionLoading
+                                                        }
+                                                        className="
+                                            px-6
+                                            py-3.5
+
+                                            rounded-[3px]
+
+                                            border
+                                            border-[#e5caca]
+
+                                            bg-white
+
+                                            text-[#c62828]
+                                            text-[11px]
+                                            font-extrabold
+
+                                            cursor-pointer
+
+                                            hover:bg-[#fff6f6]
+
+                                            disabled:opacity-50
+                                            disabled:cursor-not-allowed
+                                        "
+                                                    >
+                                                        {actionLoading
+                                                            ? "Processing..."
+                                                            : "Request Changes"}
+                                                    </button>
+
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={
+                                                            handleApprove
+                                                        }
+                                                        disabled={
+                                                            actionLoading
+                                                        }
+                                                        className="
+                                            px-7
+                                            py-3.5
+
+                                            rounded-[3px]
+
+                                            border-0
+
+                                            bg-[#087542]
+
+                                            text-white
+                                            text-[11px]
+                                            font-extrabold
+
+                                            cursor-pointer
+
+                                            hover:bg-[#065c38]
+
+                                            disabled:opacity-50
+                                            disabled:cursor-not-allowed
+                                        "
+                                                    >
+                                                        {actionLoading
+                                                            ? "Processing..."
+                                                            : "Approve Solution"}
+                                                    </button>
+
+                                                </div>
+
+                                            </div>
+                                        )}
 
                                 </div>
-
                             )}
 
                         </div>
@@ -2027,7 +3275,6 @@ function AdminPendingSolutions() {
                     </div>
 
                 </div>
-
             )}
 
         </div>

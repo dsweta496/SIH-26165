@@ -11,10 +11,6 @@ import {
     getTeamCaseDetails,
 } from "../../api/team.api";
 
-import {
-    getSolutionsForProposal,
-} from "../../api/solution.api";
-
 const getStatusLabel = (status) => {
     if (!status || status === "solution_needed") {
         return "SOLUTION NEEDED";
@@ -221,6 +217,160 @@ const AttachmentDisplay = ({
     );
 };
 
+const isSpecified = (value) => {
+    // Treat null/undefined/empty values as not specified.
+    if (value === null || value === undefined) {
+        return false;
+    }
+
+    // Do not display numeric zero or string "0" as a field value.
+    if (typeof value === "number") {
+        return value !== 0 && !Number.isNaN(value);
+    }
+
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        const normalized = trimmed.toLowerCase();
+
+        if (!trimmed) return false;
+
+        // Values that mean the field was not actually provided.
+        const emptyValues = new Set([
+            "-",
+            "—",
+            "none",
+            "null",
+            "n/a",
+            "na",
+            "not stated",
+            "not specified",
+            "not provided",
+            "not available",
+            "unspecified",
+            "unknown",
+            "nil",
+            "0",
+        ]);
+
+        return !emptyValues.has(normalized);
+    }
+
+    if (Array.isArray(value)) {
+        return value.some(isSpecified);
+    }
+
+    if (typeof value === "object") {
+        return Object.values(value).some(isSpecified);
+    }
+
+    // Keep meaningful boolean values such as true/false.
+    return true;
+};
+
+
+const formatDetailValue = (value) => {
+    if (Array.isArray(value)) {
+        return value
+            .filter(isSpecified)
+            .map(formatDetailValue)
+            .join(", ");
+    }
+
+    if (typeof value === "boolean") {
+        return value ? "Yes" : "No";
+    }
+
+    if (typeof value === "object" && value !== null) {
+        return Object.values(value)
+            .filter(isSpecified)
+            .join(", ");
+    }
+
+    return String(value);
+};
+
+
+const DetailTable = ({ fields }) => {
+    const visibleFields = fields.filter(
+        ([, value]) => isSpecified(value)
+    );
+
+    if (visibleFields.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="border border-[#dce4de] rounded-[6px] overflow-hidden bg-white">
+            {visibleFields.map(([label, value], index) => (
+                <div
+                    key={`${label}-${index}`}
+                    className="
+                        grid
+                        grid-cols-1
+                        md:grid-cols-[220px_1fr]
+                        border-b
+                        border-[#e5ebe7]
+                        last:border-b-0
+                    "
+                >
+                    <div
+                        className="
+                            px-5
+                            py-4
+                            bg-[#f7faf8]
+                            text-[#718078]
+                            text-[10px]
+                            font-extrabold
+                            tracking-[0.09em]
+                            uppercase
+                        "
+                    >
+                        {label}
+                    </div>
+
+                    <div
+                        className="
+                            px-5
+                            py-4
+                            text-[#33423a]
+                            text-[13px]
+                            leading-[1.6]
+                            font-medium
+                            whitespace-pre-wrap
+                        "
+                    >
+                        {formatDetailValue(value)}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+
+const DetailSection = ({ title, fields, children, hasContent = false }) => {
+    const hasVisibleFields = fields
+        ? fields.some(([, value]) => isSpecified(value))
+        : false;
+
+    if (!hasVisibleFields && !hasContent) {
+        return null;
+    }
+
+    return (
+        <section className="mb-8">
+            <div className="mb-3">
+                <h3 className="text-sm font-bold tracking-[0.15em] text-[#00844a] uppercase">
+                    {title}
+                </h3>
+            </div>
+
+            {fields && <DetailTable fields={fields} />}
+
+            {children}
+        </section>
+    );
+};
 
 const CurrentCases = () => {
 
@@ -243,7 +393,7 @@ const CurrentCases = () => {
         useState(false);
 
     const [activeTab, setActiveTab] =
-        useState("proposal");
+        useState("problem");
 
     const [showSolutionModal, setShowSolutionModal] =
         useState(false);
@@ -294,66 +444,36 @@ const CurrentCases = () => {
     }, []);
 
 
-    const openCaseDialog = async (
-        reportId
-    ) => {
-
+    const openCaseDialog = async (reportId) => {
         try {
-
             setSelectedCase(reportId);
-
-            setActiveTab("proposal");
-
+            setActiveTab("problem");
             setCaseLoading(true);
-
             setCaseDetails(null);
+            setLatestSolution(null);
 
             const response =
-                await getTeamCaseDetails(
-                    reportId
-                );
+                await getTeamCaseDetails(reportId);
 
-            setCaseDetails(
-                response?.data || null
-            );
+            const details = response?.data || null;
 
+            setCaseDetails(details);
 
-            const proposalId =
-                response?.data?.proposal?.proposal_id ||
-                response?.data?.proposal_id;
+            // EXACTLY like TeamDashboard:
+            // use the solutions already returned
+            // inside caseDetails.
+            const latest =
+                details?.solutions?.length
+                    ? [...details.solutions].sort(
+                        (a, b) =>
+                            (b.review_cycle ?? 0) -
+                            (a.review_cycle ?? 0)
+                    )[0]
+                    : null;
 
-            if (proposalId) {
-                try {
-                    const solutionResponse =
-                        await getSolutionsForProposal(proposalId);
-
-                    const solutions =
-                        solutionResponse?.data || [];
-
-                    const latest =
-                        solutions.length > 0
-                            ? [...solutions].sort(
-                                (a, b) =>
-                                    (b.review_cycle ?? 0) -
-                                    (a.review_cycle ?? 0)
-                            )[0]
-                            : null;
-
-                    setLatestSolution(latest);
-                } catch (solutionError) {
-                    console.error(
-                        "Failed to load solutions:",
-                        solutionError
-                    );
-
-                    setLatestSolution(null);
-                }
-            } else {
-                setLatestSolution(null);
-            }
+            setLatestSolution(latest);
 
         } catch (err) {
-
             console.error(
                 "Case details error:",
                 err
@@ -363,13 +483,9 @@ const CurrentCases = () => {
                 err?.response?.data?.message ||
                 "Failed to load case details."
             );
-
         } finally {
-
             setCaseLoading(false);
-
         }
-
     };
 
 
@@ -379,7 +495,7 @@ const CurrentCases = () => {
 
         setCaseDetails(null);
 
-        setActiveTab("proposal");
+        setActiveTab("problem");
 
         setShowSolutionModal(false);
 
@@ -578,50 +694,38 @@ const CurrentCases = () => {
                                                 </p>
 
 
-                                                <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-[#8a958e]">
+                                                {(isSpecified(item.site) ||
+                                                    isSpecified(item.location) ||
+                                                    isSpecified(item.activity)) && (
+                                                        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-[#8a958e]">
+                                                            {isSpecified(item.site) && (
+                                                                <span>
+                                                                    Site:{" "}
+                                                                    <strong className="text-[#53635a]">
+                                                                        {item.site}
+                                                                    </strong>
+                                                                </span>
+                                                            )}
 
-                                                    <span>
+                                                            {isSpecified(item.location) && (
+                                                                <span>
+                                                                    Location:{" "}
+                                                                    <strong className="text-[#53635a]">
+                                                                        {item.location}
+                                                                    </strong>
+                                                                </span>
+                                                            )}
 
-                                                        Site:{" "}
-
-                                                        <strong className="text-[#53635a]">
-
-                                                            {item.site ||
-                                                                "Not specified"}
-
-                                                        </strong>
-
-                                                    </span>
-
-
-                                                    <span>
-
-                                                        Location:{" "}
-
-                                                        <strong className="text-[#53635a]">
-
-                                                            {item.location ||
-                                                                "Not specified"}
-
-                                                        </strong>
-
-                                                    </span>
-
-
-                                                    <span>
-
-                                                        Activity:{" "}
-
-                                                        <strong className="text-[#53635a]">
-
-                                                            {item.activity ||
-                                                                "Not specified"}
-
-                                                        </strong>
-
-                                                    </span>
-
-                                                </div>
+                                                            {isSpecified(item.activity) && (
+                                                                <span>
+                                                                    Activity:{" "}
+                                                                    <strong className="text-[#53635a]">
+                                                                        {item.activity}
+                                                                    </strong>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
 
                                             </div>
 
@@ -660,254 +764,385 @@ const CurrentCases = () => {
                 </main>
 
             </div>
-
-
             {/* CASE DIALOG */}
 
             {selectedCase && (
-
                 <div
-                    className="
-                        fixed
-                        inset-0
-                        z-[100]
-                        flex
-                        items-center
-                        justify-center
-                        p-4
-                        bg-black/40
-                    "
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40"
                     onClick={closeCaseDialog}
                 >
-
                     <div
-                        className="
-                            w-full
-                            max-w-5xl
-                            max-h-[90vh]
-                            overflow-hidden
-                            bg-white
-                            rounded-[8px]
-                            shadow-[0_25px_70px_rgba(0,0,0,0.2)]
-                        "
-                        onClick={(event) =>
-                            event.stopPropagation()
-                        }
+                        className="w-full max-w-5xl max-h-[90vh] overflow-hidden bg-white rounded-[8px] shadow-[0_25px_70px_rgba(0,0,0,0.2)]"
+                        onClick={(event) => event.stopPropagation()}
                     >
-
                         {/* HEADER */}
-
-                        <div
-                            className="
-                                flex
-                                items-start
-                                justify-between
-                                px-7
-                                py-5
-                                border-b
-                                border-[#dce4de]
-                            "
-                        >
-
+                        <div className="flex items-start justify-between px-7 py-5 border-b border-[#dce4de]">
                             <div>
-
                                 <p className="text-[#087542] text-[9px] font-extrabold tracking-[0.15em]">
                                     TEAM CASE
                                 </p>
-
-
-                                <h2 className="mt-1 text-[#17211b] text-xl font-extrabold">
+                                <h2 className="mt-1 text-[#17211b] text-2xl font-extrabold">
                                     {selectedCase}
                                 </h2>
-
+                                {caseDetails?.report?.hazard && (
+                                    <p className="mt-1 text-[#718078] text-sm">
+                                        {caseDetails.report.hazard}
+                                    </p>
+                                )}
                             </div>
-
-
                             <button
                                 type="button"
                                 onClick={closeCaseDialog}
-                                className="
-                                    w-9
-                                    h-9
-                                    rounded-[4px]
-                                    bg-[#edf2ee]
-                                    text-[#66736b]
-                                    hover:text-[#087542]
-                                    text-lg
-                                "
+                                className="w-10 h-10 shrink-0 rounded-full border border-[#dce4de] bg-white text-[#66736b] hover:text-[#087542] hover:border-[#b9c9be] text-lg transition"
                             >
                                 ×
                             </button>
-
                         </div>
 
-
                         {caseLoading ? (
-
                             <div className="p-16 text-center">
-
                                 <p className="text-[#718078] text-sm">
                                     Loading case details...
                                 </p>
-
                             </div>
-
                         ) : caseDetails ? (
-
-                            <div
-                                className="
-                                    max-h-[calc(90vh-85px)]
-                                    overflow-y-auto
-                                "
-                            >
-
-                                {/* CASE SUMMARY */}
-
-                                <div className="px-7 pt-6">
-
-                                    <h3 className="text-[#17211b] text-lg font-extrabold">
-
-                                        {caseDetails.report?.hazard ||
-                                            caseDetails.report?.activity ||
-                                            "Safety Problem"}
-
-                                    </h3>
-
-
-                                    <p className="mt-2 text-[#718078] text-sm">
-
-                                        {caseDetails.report?.report_text ||
-                                            "No description available."}
-
-                                    </p>
-
-                                </div>
-
-
+                            <div className="max-h-[calc(90vh-96px)] overflow-y-auto">
                                 {/* TABS */}
-
-                                <div className="px-7 mt-6 border-b border-[#dce4de]">
-
-                                    <div className="flex gap-7">
-
+                                <div className="px-7 pt-5 border-b border-[#dce4de] bg-white sticky top-0 z-10">
+                                    <div className="flex gap-8 overflow-x-auto">
                                         <button
                                             type="button"
-                                            onClick={() =>
-                                                setActiveTab(
-                                                    "proposal"
-                                                )
-                                            }
-                                            className={`
-                                                pb-3
-                                                text-xs
-                                                font-extrabold
-                                                ${activeTab === "proposal"
-                                                    ? "text-[#087542] border-b-[3px] border-[#e31e24]"
-                                                    : "text-[#8a958e]"
-                                                }
-                                            `}
+                                            onClick={() => setActiveTab("problem")}
+                                            className={`shrink-0 pb-3 text-xs font-extrabold transition ${activeTab === "problem" ? "text-[#087542] border-b-[3px] border-[#e31e24]" : "text-[#8a958e] hover:text-[#087542]"}`}
+                                        >
+                                            PROBLEM DETAIL
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveTab("proposal")}
+                                            className={`shrink-0 pb-3 text-xs font-extrabold transition ${activeTab === "proposal" ? "text-[#087542] border-b-[3px] border-[#e31e24]" : "text-[#8a958e] hover:text-[#087542]"}`}
                                         >
                                             TEAM PROPOSAL
                                         </button>
-
-
                                         <button
                                             type="button"
-                                            onClick={() =>
-                                                setActiveTab(
-                                                    "solutions"
-                                                )
-                                            }
-                                            className={`
-                                                pb-3
-                                                text-xs
-                                                font-extrabold
-                                                ${activeTab === "solutions"
-                                                    ? "text-[#087542] border-b-[3px] border-[#e31e24]"
-                                                    : "text-[#8a958e]"
-                                                }
-                                            `}
+                                            onClick={() => setActiveTab("solutions")}
+                                            className={`shrink-0 pb-3 text-xs font-extrabold transition ${activeTab === "solutions" ? "text-[#087542] border-b-[3px] border-[#e31e24]" : "text-[#8a958e] hover:text-[#087542]"}`}
                                         >
                                             SOLUTIONS
                                         </button>
-
                                     </div>
-
                                 </div>
-
 
                                 <div className="p-7">
 
-                                    {/* TEAM PROPOSAL */}
-
-                                    {activeTab === "proposal" && (
-
+                                    {activeTab === "problem" && (
                                         <div>
 
-                                            <h3 className="text-[#17211b] text-base font-extrabold">
+                                            {/* PROBLEM TITLE */}
+
+                                            <div className="mb-7">
+                                                <h3
+                                                    className="
+                                text-[#17211b]
+                                text-xl
+                                font-extrabold
+                            "
+                                                >
+                                                    {caseDetails.report?.hazard ||
+                                                        caseDetails.report?.activity ||
+                                                        "Safety Problem"}
+                                                </h3>
+
+                                                {isSpecified(caseDetails.report?.report_text) && (
+                                                    <p
+                                                        className="
+                                                                   mt-2
+                                                                   text-[#718078]
+                                                                   text-sm
+                                                                   leading-[1.7]
+                                                               "
+                                                    >
+                                                        {caseDetails.report.report_text}
+                                                    </p>
+                                                )}
+                                            </div>
+
+
+                                            {/* INCIDENT INFORMATION */}
+
+                                            <DetailSection
+                                                title="INCIDENT INFORMATION"
+                                                fields={[
+                                                    ["Organisation", caseDetails.report?.organization],
+                                                    ["Sector", caseDetails.report?.sector],
+                                                    ["Site", caseDetails.report?.site],
+                                                    ["Incident Serial No.", caseDetails.report?.incident_serial_no],
+                                                    [
+                                                        "Report Date",
+                                                        caseDetails.report?.report_date
+                                                            ? new Date(caseDetails.report.report_date).toLocaleDateString(
+                                                                "en-IN",
+                                                                {
+                                                                    day: "2-digit",
+                                                                    month: "short",
+                                                                    year: "numeric",
+                                                                }
+                                                            )
+                                                            : null,
+                                                    ],
+                                                    ["Incident Time", caseDetails.report?.incident_time],
+                                                    ["Incident Classification", caseDetails.report?.incident_classification],
+                                                    ["Report Stage", caseDetails.report?.report_stage],
+                                                    ["Incident Category", caseDetails.report?.incident_category],
+                                                    ["Incident Type", caseDetails.report?.incident_type],
+                                                    ["Incident Location", caseDetails.report?.incident_location],
+                                                ]}
+                                            />
+
+
+                                            {/* ACTIVITY / LOCATION */}
+
+                                            <DetailSection
+                                                title="ACTIVITY & LOCATION"
+                                                fields={[
+                                                    ["Activity", caseDetails.report?.activity],
+                                                    ["Location", caseDetails.report?.location],
+                                                    ["Equipment", caseDetails.report?.equipment],
+                                                    ["Language Style", caseDetails.report?.language_style],
+                                                ]}
+                                            />
+
+
+                                            {/* INCIDENT DESCRIPTION */}
+
+                                            <DetailSection
+                                                title="INCIDENT DESCRIPTION"
+                                                hasContent={isSpecified(caseDetails.report?.report_text)}
+                                            >
+                                                <div
+                                                    className="
+                                                               p-5
+                                                               rounded-[6px]
+                                                               border
+                                                               border-[#dce4de]
+                                                               bg-[#f7faf8]
+                                                               text-[#46534b]
+                                                               text-[13px]
+                                                               leading-[1.8]
+                                                               whitespace-pre-wrap
+                                                           "
+                                                >
+                                                    {caseDetails.report.report_text}
+                                                </div>
+                                            </DetailSection>
+
+
+                                            {/* SAFETY / SIF ANALYSIS */}
+
+                                            <DetailSection
+                                                title="SAFETY ANALYSIS"
+                                                fields={[
+                                                    ["Hazard", caseDetails.report?.hazard],
+                                                    ["Energy Source", caseDetails.report?.energy_source],
+                                                    ["Exposure", caseDetails.report?.exposure],
+                                                    ["Unsafe Act / Condition", caseDetails.report?.unsafe_act_condition],
+                                                    ["Barrier / Control", caseDetails.report?.barrier_or_control],
+                                                    ["Barrier Failure Mode", caseDetails.report?.barrier_failure_mode],
+                                                    ["Barrier Function", caseDetails.report?.barrier_function],
+                                                    ["Potential Consequence", caseDetails.report?.potential_consequence],
+                                                    ["Actual Outcome", caseDetails.report?.actual_outcome],
+                                                ]}
+                                            />
+
+
+                                            {/* FACILITY / IMPACT */}
+
+                                            <DetailSection
+                                                title="FACILITY & IMPACT"
+                                                fields={[
+                                                    ["Facility Shutdown", caseDetails.report?.facility_shutdown],
+                                                    ["Facility Outage", caseDetails.report?.facility_outage],
+                                                    ["Facility Status", caseDetails.report?.facility_status],
+                                                    ["Fire Duration (Hours)", caseDetails.report?.fire_duration_hours],
+                                                    ["Fire Duration (Minutes)", caseDetails.report?.fire_duration_minutes],
+                                                    ["Direct Loss (₹ Lakhs)", caseDetails.report?.direct_loss_in_lakhs],
+                                                    ["Indirect Loss", caseDetails.report?.indirect_loss],
+                                                ]}
+                                            />
+
+
+                                            {/* FATALITIES / INJURIES */}
+
+                                            <DetailSection
+                                                title="PEOPLE IMPACT"
+                                                fields={[
+                                                    ["Fatalities — Employees", caseDetails.report?.fatalities?.employees],
+                                                    ["Fatalities — Contractors", caseDetails.report?.fatalities?.contractors],
+                                                    ["Fatalities — Others", caseDetails.report?.fatalities?.others],
+                                                    ["Injuries — Employees", caseDetails.report?.injuries?.employees],
+                                                    ["Injuries — Contractors", caseDetails.report?.injuries?.contractors],
+                                                    ["Injuries — Others", caseDetails.report?.injuries?.others],
+                                                    ["Man Hours Lost — Employees", caseDetails.report?.man_hours_lost?.employees],
+                                                    ["Man Hours Lost — Contractors", caseDetails.report?.man_hours_lost?.contractors],
+                                                    ["Man Hours Lost — Others", caseDetails.report?.man_hours_lost?.others],
+                                                ]}
+                                            />
+
+
+                                            {/* FOLLOW-UP / INVESTIGATION */}
+
+                                            <DetailSection
+                                                title="FOLLOW-UP & INVESTIGATION"
+                                                fields={[
+                                                    ["Post-Incident Measures", caseDetails.report?.post_incident_measures],
+                                                    ["Similar Incident Occurred", caseDetails.report?.similar_incident_occurred],
+                                                    ["Similar Incident Description", caseDetails.report?.similar_incident_description],
+                                                    [
+                                                        "Internal Investigation Completed",
+                                                        caseDetails.report?.internal_investigation_completed,
+                                                    ],
+                                                    [
+                                                        "Investigation Completion Date",
+                                                        caseDetails.report?.internal_investigation_completion_date
+                                                            ? new Date(
+                                                                caseDetails.report.internal_investigation_completion_date
+                                                            ).toLocaleDateString("en-IN", {
+                                                                day: "2-digit",
+                                                                month: "short",
+                                                                year: "numeric",
+                                                            })
+                                                            : null,
+                                                    ],
+                                                    [
+                                                        "Investigation Report Submitted to OISD",
+                                                        caseDetails.report?.internal_investigation_report_submitted_to_oisd,
+                                                    ],
+                                                    [
+                                                        "Expected OISD Submission Date",
+                                                        caseDetails.report?.expected_oisd_submission_date
+                                                            ? new Date(
+                                                                caseDetails.report.expected_oisd_submission_date
+                                                            ).toLocaleDateString("en-IN", {
+                                                                day: "2-digit",
+                                                                month: "short",
+                                                                year: "numeric",
+                                                            })
+                                                            : null,
+                                                    ],
+                                                ]}
+                                            />
+
+
+                                            {/* ORIGINAL EVIDENCE */}
+
+                                            {caseDetails.report?.attachments?.length > 0 && (
+                                                <DetailSection
+                                                    title="ORIGINAL EVIDENCE"
+                                                    hasContent={true}
+                                                >
+                                                    <AttachmentDisplay
+                                                        attachments={caseDetails.report.attachments}
+                                                        title="PROBLEM REPORT DOCUMENTS"
+                                                    />
+                                                </DetailSection>
+                                            )}
+
+                                        </div>
+                                    )}
+
+
+                                    {/* =================================================
+                TAB 2 — TEAM PROPOSAL
+            ================================================= */}
+
+                                    {activeTab === "proposal" && (
+                                        <div>
+
+                                            <h3
+                                                className="
+                            text-[#17211b]
+                            text-base
+                            font-extrabold
+                        "
+                                            >
                                                 Accepted Team Proposal
                                             </h3>
 
-
                                             {caseDetails.proposal ? (
+                                                <div className="mt-4">
 
-                                                <div>
-
-                                                    <div className="mt-4 p-5 bg-[#f7faf8] border border-[#dce4de] rounded-[6px]">
-
-                                                        <p className="text-[#66736b] text-sm whitespace-pre-wrap">
-
-                                                            {caseDetails.proposal.solution_proposal ||
-                                                                "No proposal description available."}
-
-                                                        </p>
-
+                                                    <div
+                                                        className="
+                                    p-5
+                                    bg-[#f7faf8]
+                                    border
+                                    border-[#dce4de]
+                                    rounded-[6px]
+                                "
+                                                    >
+                                                        {isSpecified(caseDetails.proposal.solution_proposal) && (
+                                                            <p
+                                                                className="
+                                        text-[#66736b]
+                                        text-sm
+                                        leading-[1.7]
+                                        whitespace-pre-wrap
+                                    "
+                                                            >
+                                                                {caseDetails.proposal.solution_proposal}
+                                                            </p>
+                                                        )}
                                                     </div>
-
 
                                                     <AttachmentDisplay
                                                         attachments={
-                                                            caseDetails
-                                                                .proposal
-                                                                ?.attachments
+                                                            caseDetails.proposal?.attachments
                                                         }
                                                         title="PROPOSAL DOCUMENTS"
                                                     />
 
                                                 </div>
-
                                             ) : (
-
                                                 <p className="mt-4 text-[#718078] text-sm">
                                                     No accepted proposal available.
                                                 </p>
-
                                             )}
 
                                         </div>
-
                                     )}
 
 
-                                    {/* SOLUTIONS */}
+                                    {/* =================================================
+                TAB 3 — SOLUTIONS
+            ================================================= */}
 
                                     {activeTab === "solutions" && (
-
                                         <div>
 
                                             <div className="flex items-center justify-between gap-4">
 
                                                 <div>
-
-                                                    <h3 className="text-[#17211b] text-base font-extrabold">
+                                                    <h3
+                                                        className="
+                                    text-[#17211b]
+                                    text-base
+                                    font-extrabold
+                                "
+                                                    >
                                                         Solution History
                                                     </h3>
 
-
-                                                    <p className="mt-1 text-[#718078] text-xs">
-                                                        Every submission and review cycle remains available here.
+                                                    <p
+                                                        className="
+                                    mt-1
+                                    text-[#718078]
+                                    text-xs
+                                "
+                                                    >
+                                                        Every submission and review cycle remains
+                                                        available here.
                                                     </p>
-
                                                 </div>
 
 
@@ -915,33 +1150,26 @@ const CurrentCases = () => {
                                                     (!latestSolution ||
                                                         latestSolution.status ===
                                                         "changes_requested") && (
-
                                                         <button
                                                             type="button"
                                                             onClick={() =>
-                                                                setShowSolutionModal(
-                                                                    true
-                                                                )
+                                                                setShowSolutionModal(true)
                                                             }
                                                             className="
-                                                            px-4
-                                                            py-2.5
-                                                            rounded-[4px]
-                                                            bg-[#087542]
-                                                            text-white
-                                                            text-xs
-                                                            font-extrabold
-                                                            hover:bg-[#075f36]
-                                                            transition
-                                                        "
+                                        shrink-0
+                                        px-4
+                                        py-2.5
+                                        rounded-[4px]
+                                        bg-[#087542]
+                                        text-white
+                                        text-xs
+                                        font-extrabold
+                                        hover:bg-[#075f36]
+                                        transition
+                                    "
                                                         >
-                                                            +
-                                                            {latestSolution?.status ===
-                                                                "changes_requested"
-                                                                ? " Resubmit Solution"
-                                                                : " Submit Solution"}
+                                                            + Submit Solution
                                                         </button>
-
                                                     )}
 
                                             </div>
@@ -950,124 +1178,149 @@ const CurrentCases = () => {
                                             <div className="mt-6 space-y-4">
 
                                                 {caseDetails.solutions?.length ? (
-
                                                     caseDetails.solutions.map(
                                                         (solution) => (
-
                                                             <div
                                                                 key={
                                                                     solution._id ||
                                                                     solution.solution_id
                                                                 }
                                                                 className="
-                                                                    p-5
-                                                                    border
-                                                                    border-[#dce4de]
-                                                                    rounded-[6px]
-                                                                    bg-white
-                                                                "
+                                            p-5
+                                            border
+                                            border-[#dce4de]
+                                            rounded-[6px]
+                                            bg-white
+                                        "
                                                             >
 
                                                                 <div className="flex items-center justify-between gap-4">
 
-                                                                    <span className="text-[#087542] text-xs font-extrabold">
-
+                                                                    <span
+                                                                        className="
+                                                    text-[#087542]
+                                                    text-xs
+                                                    font-extrabold
+                                                "
+                                                                    >
                                                                         Cycle{" "}
                                                                         {solution.review_cycle}
-
                                                                     </span>
 
-
-                                                                    <span className="px-2 py-1 rounded-full bg-[#edf2ee] text-[#66736b] text-[9px] font-extrabold">
-
+                                                                    <span
+                                                                        className="
+                                                    px-2
+                                                    py-1
+                                                    rounded-full
+                                                    bg-[#edf2ee]
+                                                    text-[#66736b]
+                                                    text-[9px]
+                                                    font-extrabold
+                                                "
+                                                                    >
                                                                         {getStatusLabel(
                                                                             solution.status
                                                                         )}
-
                                                                     </span>
 
                                                                 </div>
 
 
-                                                                <p className="mt-4 text-[#53635a] text-sm whitespace-pre-wrap">
-
-                                                                    {solution.solution_text}
-
-                                                                </p>
-
-
-                                                                {solution.admin_feedback && (
-
-                                                                    <div className="mt-4 p-4 rounded-[4px] bg-[#fff7e6] border border-[#f0dfb8]">
-
-                                                                        <p className="text-[#9a6700] text-[9px] font-extrabold tracking-wide">
-                                                                            ADMIN FEEDBACK
-                                                                        </p>
-
-
-                                                                        <p className="mt-2 text-[#72551a] text-xs whitespace-pre-wrap">
-
-                                                                            {solution.admin_feedback}
-
-                                                                        </p>
-
-                                                                    </div>
-
+                                                                {isSpecified(solution.solution_text) && (
+                                                                    <p
+                                                                        className="
+                                                mt-4
+                                                text-[#53635a]
+                                                text-sm
+                                                whitespace-pre-wrap
+                                            "
+                                                                    >
+                                                                        {solution.solution_text}
+                                                                    </p>
                                                                 )}
 
-
-                                                                {/* SOLUTION ATTACHMENTS */}
 
                                                                 <AttachmentDisplay
                                                                     attachments={
                                                                         solution.attachments
                                                                     }
-                                                                    title="SOLUTION DOCUMENTS"
+                                                                    title={`CYCLE ${solution.review_cycle} DOCUMENTS`}
                                                                 />
 
-                                                            </div>
 
+                                                                {isSpecified(solution.admin_feedback) && (
+                                                                    <div
+                                                                        className="
+                                                    mt-4
+                                                    p-4
+                                                    rounded-[4px]
+                                                    bg-[#fff7e6]
+                                                    border
+                                                    border-[#f0dfb8]
+                                                "
+                                                                    >
+                                                                        <p
+                                                                            className="
+                                                        text-[#9a6700]
+                                                        text-[9px]
+                                                        font-extrabold
+                                                        tracking-wide
+                                                    "
+                                                                        >
+                                                                            ADMIN FEEDBACK
+                                                                        </p>
+
+                                                                        <p
+                                                                            className="
+                                                        mt-2
+                                                        text-[#72551a]
+                                                        text-xs
+                                                        whitespace-pre-wrap
+                                                    "
+                                                                        >
+                                                                            {
+                                                                                solution.admin_feedback
+                                                                            }
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+
+                                                            </div>
                                                         )
                                                     )
-
                                                 ) : (
-
-                                                    <div className="p-8 text-center bg-[#f7faf8] rounded-[6px] border border-[#dce4de]">
-
+                                                    <div
+                                                        className="
+                                    p-8
+                                    text-center
+                                    bg-[#f7faf8]
+                                    rounded-[6px]
+                                    border
+                                    border-[#dce4de]
+                                "
+                                                    >
                                                         <p className="text-[#718078] text-sm">
                                                             No solution has been submitted yet.
                                                         </p>
-
                                                     </div>
-
                                                 )}
 
                                             </div>
 
                                         </div>
-
                                     )}
 
                                 </div>
-
                             </div>
-
                         ) : (
-
                             <div className="p-12 text-center">
-
                                 <p className="text-[#718078] text-sm">
                                     Unable to load this case.
                                 </p>
-
                             </div>
-
                         )}
-
                     </div>
-
                 </div>
-
             )}
 
 

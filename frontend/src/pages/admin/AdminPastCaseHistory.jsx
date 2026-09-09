@@ -10,6 +10,14 @@ import {
     getSolutionsForProposal,
 } from "../../api/solution.api";
 
+import {
+    getProposalsForReport,
+} from "../../api/teamProposal.api";
+
+import {
+    getProblemReportById,
+} from "../../api/problemReport.api";
+
 
 function AdminPastCaseHistory() {
 
@@ -17,6 +25,18 @@ function AdminPastCaseHistory() {
 
     const [selectedCase, setSelectedCase] =
         useState(null);
+
+    const [activeTab, setActiveTab] =
+        useState("solutions");
+
+    const [assignedProposal, setAssignedProposal] =
+        useState(null);
+
+    const [detailLoading, setDetailLoading] =
+        useState(false);
+
+    const [proposalLoading, setProposalLoading] =
+        useState(false);
 
     const [solutions, setSolutions] =
         useState([]);
@@ -85,39 +105,118 @@ function AdminPastCaseHistory() {
        OPEN CASE
     ========================================================= */
 
-    const handleOpenCase = (caseItem) => {
-
+    const handleOpenCase = async (caseItem) => {
         try {
-
             setSelectedCase(caseItem);
 
-            setSolutionsError("");
-
-            setSolutionsLoading(false);
-
-            /*
-             * Resolved cases now contain their complete
-             * solution history from the admin endpoint.
-             */
+            // IMPORTANT:
+            // Popup always opens on Solutions.
+            setActiveTab("solutions");
 
             setSolutions(
                 caseItem.solutions || []
             );
 
-        } catch (err) {
+            setAssignedProposal(null);
 
+            setSolutionsError("");
+
+            setDetailLoading(true);
+            setProposalLoading(true);
+
+            /*
+             * Load the complete problem report.
+             * The resolved-cases endpoint may contain only
+             * the summary fields needed by the table.
+             */
+            const reportPromise =
+                getProblemReportById(
+                    caseItem.report_id
+                );
+
+            /*
+             * Load all proposals for this report so we
+             * can identify the proposal belonging to the
+             * team that was actually assigned.
+             */
+            const proposalPromise =
+                getProposalsForReport(
+                    caseItem.report_id
+                );
+
+            const [
+                reportResponse,
+                proposalResponse,
+            ] = await Promise.allSettled([
+                reportPromise,
+                proposalPromise,
+            ]);
+
+            /*
+             * Merge the full report into the existing
+             * resolved-case object.
+             */
+            if (
+                reportResponse.status ===
+                "fulfilled" &&
+                reportResponse.value?.data
+            ) {
+                setSelectedCase({
+                    ...caseItem,
+                    ...reportResponse.value.data,
+                });
+            }
+
+            /*
+             * Find the proposal belonging to the
+             * assigned team.
+             */
+            if (
+                proposalResponse.status ===
+                "fulfilled"
+            ) {
+                const proposalList =
+                    proposalResponse.value?.data || [];
+
+                const assignedTeam =
+                    caseItem.assigned_team;
+
+                const matchedProposal =
+                    proposalList.find(
+                        (proposal) =>
+                            proposal.team_name ===
+                            assignedTeam ||
+                            proposal.team_id ===
+                            assignedTeam
+                    ) ||
+                    proposalList.find((proposal) =>
+                        [
+                            "accepted",
+                            "approved",
+                            "assigned",
+                        ].includes(
+                            String(
+                                proposal.status || ""
+                            ).toLowerCase()
+                        )
+                    );
+
+                setAssignedProposal(
+                    matchedProposal || null
+                );
+            }
+        } catch (err) {
             console.error(
-                "Load case solutions error:",
+                "Load past case details error:",
                 err
             );
 
             setSolutionsError(
-                "Unable to load solutions for this case."
+                "Unable to load complete case details."
             );
-
-            setSolutions([]);
-
-            setSolutionsLoading(false);
+        } finally {
+            setDetailLoading(false);
+            setProposalLoading(false);
         }
     };
 
@@ -126,13 +225,16 @@ function AdminPastCaseHistory() {
     ========================================================= */
 
     const handleClose = () => {
-
         setSelectedCase(null);
-
         setSolutions([]);
+        setAssignedProposal(null);
+
+        setActiveTab("solutions");
 
         setSolutionsError("");
 
+        setDetailLoading(false);
+        setProposalLoading(false);
     };
 
 
@@ -266,6 +368,313 @@ function AdminPastCaseHistory() {
         );
     };
 
+    const hasEnteredValue = (value) => {
+        if (
+            value === null ||
+            value === undefined
+        ) {
+            return false;
+        }
+
+        if (Array.isArray(value)) {
+            return (
+                value.length > 0 &&
+                value.some(
+                    (item) =>
+                        item !== null &&
+                        item !== undefined &&
+                        String(item).trim() !== "" &&
+                        String(item)
+                            .trim()
+                            .toUpperCase() !==
+                        "NOT_STATED" &&
+                        String(item)
+                            .trim()
+                            .toUpperCase() !==
+                        "NOT STATED"
+                )
+            );
+        }
+
+        if (typeof value === "boolean") {
+            return true;
+        }
+
+        const normalizedValue =
+            String(value).trim();
+
+        return (
+            normalizedValue !== "" &&
+            normalizedValue.toUpperCase() !==
+            "NOT_STATED" &&
+            normalizedValue.toUpperCase() !==
+            "NOT STATED"
+        );
+    };
+
+
+    const formatDisplayValue = (value) => {
+        if (Array.isArray(value)) {
+            return value
+                .filter(
+                    (item) =>
+                        item !== null &&
+                        item !== undefined &&
+                        String(item).trim() !== "" &&
+                        String(item)
+                            .trim()
+                            .toUpperCase() !==
+                        "NOT_STATED"
+                )
+                .map((item) =>
+                    String(item)
+                        .replace(/_/g, " ")
+                        .replace(
+                            /\b\w/g,
+                            (char) =>
+                                char.toUpperCase()
+                        )
+                )
+                .join(", ");
+        }
+
+        if (typeof value === "boolean") {
+            return value ? "Yes" : "No";
+        }
+
+        if (typeof value === "string") {
+            return value
+                .replace(/_/g, " ")
+                .replace(
+                    /\b\w/g,
+                    (char) =>
+                        char.toUpperCase()
+                );
+        }
+
+        return value;
+    };
+
+
+    const problemDetailFields = selectedCase
+        ? [
+            [
+                "Organisation",
+                selectedCase.organization,
+            ],
+            [
+                "Sector",
+                selectedCase.sector,
+            ],
+            [
+                "Site",
+                selectedCase.site,
+            ],
+            [
+                "Incident Serial No.",
+                selectedCase.incident_serial_no,
+            ],
+            [
+                "Report Date",
+                formatDate(
+                    selectedCase.report_date
+                ),
+            ],
+            [
+                "Incident Time",
+                selectedCase.incident_time,
+            ],
+            [
+                "Incident Classification",
+                selectedCase.incident_classification,
+            ],
+            [
+                "Report Stage",
+                selectedCase.report_stage,
+            ],
+            [
+                "Incident Category",
+                selectedCase.incident_category,
+            ],
+            [
+                "Incident Type",
+                selectedCase.incident_type,
+            ],
+            [
+                "Incident Location",
+                selectedCase.incident_location,
+            ],
+            [
+                "Activity",
+                selectedCase.activity,
+            ],
+            [
+                "Location",
+                selectedCase.location,
+            ],
+            [
+                "Equipment",
+                selectedCase.equipment,
+            ],
+            [
+                "Hazard",
+                selectedCase.hazard,
+            ],
+            [
+                "Energy Source",
+                selectedCase.energy_source,
+            ],
+            [
+                "Actual Outcome",
+                selectedCase.actual_outcome,
+            ],
+            [
+                "Facility Shutdown",
+                selectedCase.facility_shutdown,
+            ],
+            [
+                "Facility Outage",
+                selectedCase.facility_outage,
+            ],
+            [
+                "Facility Status",
+                selectedCase.facility_status,
+            ],
+            [
+                "Fire Duration (Hours)",
+                selectedCase.fire_duration_hours,
+            ],
+            [
+                "Fire Duration (Minutes)",
+                selectedCase.fire_duration_minutes,
+            ],
+            [
+                "Fatalities — Employees",
+                selectedCase.fatalities?.employees,
+            ],
+            [
+                "Fatalities — Contractors",
+                selectedCase.fatalities?.contractors,
+            ],
+            [
+                "Fatalities — Others",
+                selectedCase.fatalities?.others,
+            ],
+            [
+                "Injuries — Employees",
+                selectedCase.injuries?.employees,
+            ],
+            [
+                "Injuries — Contractors",
+                selectedCase.injuries?.contractors,
+            ],
+            [
+                "Injuries — Others",
+                selectedCase.injuries?.others,
+            ],
+            [
+                "Man Hours Lost — Employees",
+                selectedCase.man_hours_lost?.employees,
+            ],
+            [
+                "Man Hours Lost — Contractors",
+                selectedCase.man_hours_lost?.contractors,
+            ],
+            [
+                "Man Hours Lost — Others",
+                selectedCase.man_hours_lost?.others,
+            ],
+            [
+                "Direct Loss (₹ Lakhs)",
+                selectedCase.direct_loss_in_lakhs,
+            ],
+            [
+                "Indirect Loss",
+                selectedCase.indirect_loss,
+            ],
+            [
+                "Similar Incident Occurred",
+                selectedCase.similar_incident_occurred,
+            ],
+            [
+                "Similar Incident Description",
+                selectedCase.similar_incident_description,
+            ],
+            [
+                "Internal Investigation Completed",
+                selectedCase.internal_investigation_completed,
+            ],
+            [
+                "Internal Investigation Completion Date",
+                formatDate(
+                    selectedCase.internal_investigation_completion_date
+                ),
+            ],
+            [
+                "Investigation Report Submitted to OISD",
+                selectedCase.internal_investigation_report_submitted_to_oisd,
+            ],
+            [
+                "Expected OISD Submission Date",
+                formatDate(
+                    selectedCase.expected_oisd_submission_date
+                ),
+            ],
+            [
+                "Cause of Incident",
+                selectedCase.cause_of_incident,
+            ],
+            [
+                "Leakage Cause",
+                selectedCase.leakage_cause,
+            ],
+            [
+                "Leakage Cause Details",
+                selectedCase.leakage_cause_details,
+            ],
+            [
+                "Ignition Cause",
+                selectedCase.ignition_cause,
+            ],
+            [
+                "Ignition Cause Details",
+                selectedCase.ignition_cause_details,
+            ],
+            [
+                "Avoidable",
+                selectedCase.avoidable,
+            ],
+            [
+                "Avoidance Factors",
+                selectedCase.avoidance_factors,
+            ],
+            [
+                "Barrier / Control",
+                selectedCase.barrier_or_control,
+            ],
+            [
+                "Barrier Failure Mode",
+                selectedCase.barrier_failure_mode,
+            ],
+            [
+                "Barrier Function",
+                selectedCase.barrier_function,
+            ],
+            [
+                "Potential Consequence",
+                selectedCase.potential_consequence,
+            ],
+            [
+                "Language Style",
+                selectedCase.language_style,
+            ],
+        ].filter(([, value]) =>
+            hasEnteredValue(value)
+        )
+        : [];
+
+
+
 
     /* =========================================================
        LOADING
@@ -316,7 +725,9 @@ function AdminPastCaseHistory() {
 
             </div>
         );
-    }
+    };
+
+
 
 
     /* =========================================================
@@ -921,645 +1332,1159 @@ function AdminPastCaseHistory() {
                 CASE HISTORY DIALOG
             ================================================= */}
 
-            {selectedCase && (
+            {/* =================================================
+    CASE HISTORY DIALOG
+================================================= */}
 
+            {selectedCase && (
                 <div
                     className="
-                        fixed
-                        inset-0
+            fixed
+            inset-0
+            z-[100]
 
-                        z-[100]
+            flex
+            items-center
+            justify-center
 
-                        flex
-                        items-center
-                        justify-center
+            bg-[#0b2117]/60
 
-                        bg-[#0b2117]/60
-
-                        p-4
-                        sm:p-6
-                    "
+            p-4
+            sm:p-6
+        "
                 >
-
                     <div
                         className="
-                            relative
+                relative
 
-                            w-full
-                            max-w-[1000px]
+                w-full
+                max-w-[1100px]
 
-                            max-h-[92vh]
+                max-h-[92vh]
 
-                            overflow-y-auto
+                flex
+                flex-col
 
-                            rounded-[6px]
+                overflow-hidden
 
-                            bg-white
+                rounded-[6px]
 
-                            shadow-[0_25px_80px_rgba(0,0,0,0.25)]
-                        "
+                bg-white
+
+                shadow-[0_25px_80px_rgba(0,0,0,0.25)]
+            "
                     >
 
-                        {/* HEADER */}
+                        {/* =================================================
+                HEADER
+            ================================================= */}
 
                         <div
                             className="
-                                sticky
-                                top-0
-                                z-10
+                    shrink-0
 
-                                flex
-                                items-start
-                                justify-between
+                    flex
+                    items-start
+                    justify-between
 
-                                gap-5
+                    gap-5
 
-                                px-8
-                                py-6
+                    px-8
+                    py-6
 
-                                border-b
-                                border-[#dce4de]
+                    border-b
+                    border-[#dce4de]
 
-                                bg-white
-                            "
+                    bg-white
+                "
                         >
-
                             <div>
-
                                 <p
                                     className="
-                                        mb-2
+                            mb-2
 
-                                        text-[#087542]
-
-                                        text-[10px]
-                                        font-extrabold
-
-                                        tracking-[0.18em]
-                                    "
+                            text-[#087542]
+                            text-[10px]
+                            font-extrabold
+                            tracking-[0.18em]
+                        "
                                 >
                                     RESOLVED CASE
                                 </p>
 
                                 <h2
                                     className="
-                                        text-[#17211b]
-
-                                        text-[30px]
-                                        leading-none
-
-                                        font-extrabold
-
-                                        tracking-[-0.04em]
-                                    "
+                            text-[#17211b]
+                            text-[30px]
+                            leading-none
+                            font-extrabold
+                            tracking-[-0.04em]
+                        "
                                 >
-                                    {
-                                        selectedCase.report_id
-                                    }
+                                    {selectedCase.report_id}
                                 </h2>
 
-                            </div>
+                                <p
+                                    className="
+                            mt-3
 
+                            text-[#718078]
+                            text-[13px]
+                        "
+                                >
+                                    {selectedCase.site ||
+                                        "Resolved safety case"}
+                                </p>
+                            </div>
 
                             <button
                                 type="button"
-                                onClick={
-                                    handleClose
-                                }
+                                onClick={handleClose}
                                 className="
-                                    w-10
-                                    h-10
+                        w-10
+                        h-10
 
-                                    flex
-                                    items-center
-                                    justify-center
+                        flex
+                        items-center
+                        justify-center
 
-                                    shrink-0
+                        shrink-0
 
-                                    rounded-full
+                        rounded-full
+                        border
+                        border-[#dce4de]
 
-                                    border
-                                    border-[#dce4de]
+                        bg-white
 
-                                    bg-white
+                        text-[#66736b]
+                        text-[20px]
 
-                                    text-[#66736b]
+                        cursor-pointer
 
-                                    text-[20px]
-
-                                    cursor-pointer
-
-                                    hover:bg-[#f5f8f6]
-                                "
+                        hover:bg-[#f5f8f6]
+                    "
                             >
                                 ×
                             </button>
-
                         </div>
 
 
-                        {/* CASE INFORMATION */}
+                        {/* =================================================
+                TABS
+            ================================================= */}
 
                         <div
                             className="
-                                grid
-                                grid-cols-1
+                    shrink-0
 
-                                gap-4
+                    flex
 
-                                px-8
-                                pt-8
+                    overflow-x-auto
 
-                                sm:grid-cols-2
-                                lg:grid-cols-4
-                            "
+                    border-b
+                    border-[#dce4de]
+
+                    bg-[#f9fbfa]
+                "
                         >
+                            {[
+                                {
+                                    id: "problem",
+                                    label: "Problem Detail",
+                                },
+                                {
+                                    id: "proposal",
+                                    label: "Team Proposal",
+                                },
+                                {
+                                    id: "solutions",
+                                    label: "Solutions",
+                                },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() =>
+                                        setActiveTab(tab.id)
+                                    }
+                                    className={`
+                            relative
 
-                            <InfoField
-                                label="Site"
-                                value={
-                                    selectedCase.site
-                                }
-                            />
+                            shrink-0
 
-                            <InfoField
-                                label="Assigned Team"
-                                value={
-                                    selectedCase.assigned_team
-                                }
-                            />
+                            px-7
+                            py-4
 
-                            <InfoField
-                                label="Case Status"
-                                value="Resolved"
-                            />
+                            border-0
 
-                            <InfoField
-                                label="Resolved"
-                                value={
-                                    formatDateTime(
-                                        selectedCase.resolved_at
-                                    )
-                                }
-                            />
+                            bg-transparent
 
-                        </div>
+                            text-[11px]
+                            font-extrabold
 
+                            tracking-[0.04em]
 
-                        {/* SOLUTIONS */}
+                            cursor-pointer
 
-                        <div
-                            className="
-                                px-8
-                                py-8
-                            "
-                        >
+                            transition
 
-                            <div
-                                className="
-                                    flex
-                                    items-center
-                                    justify-between
-
-                                    gap-4
-
-                                    mb-6
-                                "
-                            >
-
-                                <h3
-                                    className="
-                                        text-[#17211b]
-
-                                        text-[19px]
-                                        font-extrabold
-                                    "
+                            ${activeTab === tab.id
+                                            ? "text-[#087542]"
+                                            : "text-[#718078] hover:text-[#33423a]"
+                                        }
+                        `}
                                 >
-                                    Solutions Offered
-                                </h3>
+                                    {tab.label}
 
-                                <span
-                                    className="
-                                        px-3
-                                        py-1.5
+                                    {tab.id === "solutions" &&
+                                        solutions.length > 0 && (
+                                            <span
+                                                className="
+                                        ml-2
+                                        px-2
+                                        py-0.5
 
                                         rounded-full
 
                                         bg-[#eaf4ee]
 
                                         text-[#087542]
-
-                                        text-[10px]
-                                        font-extrabold
+                                        text-[9px]
                                     "
-                                >
-                                    {
-                                        solutions.length
-                                    }
-                                </span>
+                                            >
+                                                {solutions.length}
+                                            </span>
+                                        )}
 
-                            </div>
+                                    {activeTab === tab.id && (
+                                        <span
+                                            className="
+                                    absolute
+                                    left-5
+                                    right-5
+                                    bottom-0
+
+                                    h-[3px]
+
+                                    rounded-t
+
+                                    bg-[#087542]
+                                "
+                                        />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
 
 
-                            {solutionsLoading && (
+                        {/* =================================================
+                CONTENT
+            ================================================= */}
 
+                        <div
+                            className="
+                    min-h-0
+                    flex-1
+
+                    overflow-y-auto
+                "
+                        >
+
+                            {/* =================================================
+                    TAB 1 — PROBLEM DETAIL
+                ================================================= */}
+
+                            {activeTab === "problem" && (
                                 <div
                                     className="
-                                        py-12
+                            px-8
+                            py-8
 
-                                        flex
-                                        flex-col
-                                        items-center
-                                    "
+                            space-y-9
+                        "
                                 >
 
-                                    <div
-                                        className="
-                                            w-9
-                                            h-9
+                                    {detailLoading ? (
+                                        <LoadingBlock
+                                            text="Loading problem details..."
+                                        />
+                                    ) : (
+                                        <>
+                                            {/* CASE SUMMARY */}
 
-                                            rounded-full
-
-                                            border-4
-                                            border-[#dce8e0]
-                                            border-t-[#087542]
-
-                                            animate-spin
-                                        "
-                                    />
-
-                                    <p
-                                        className="
-                                            mt-4
-
-                                            text-[#718078]
-
-                                            text-[13px]
-                                        "
-                                    >
-                                        Loading solutions...
-                                    </p>
-
-                                </div>
-
-                            )}
-
-
-                            {!solutionsLoading &&
-                                solutionsError && (
-
-                                    <div
-                                        className="
-                                            p-5
-
-                                            rounded-[5px]
-
-                                            border
-                                            border-[#f0cccc]
-
-                                            bg-[#fff6f6]
-
-                                            text-[#c62828]
-
-                                            text-[13px]
-                                            font-bold
-                                        "
-                                    >
-                                        {solutionsError}
-                                    </div>
-
-                                )}
-
-
-                            {!solutionsLoading &&
-                                !solutionsError &&
-                                solutions.length ===
-                                0 && (
-
-                                    <div
-                                        className="
-                                            p-8
-
-                                            rounded-[5px]
-
-                                            border
-                                            border-[#dce4de]
-
-                                            bg-[#f9fbfa]
-
-                                            text-[#718078]
-
-                                            text-[13px]
-
-                                            text-center
-                                        "
-                                    >
-                                        No solution history was found
-                                        for this case.
-                                    </div>
-
-                                )}
-
-
-                            {!solutionsLoading &&
-                                !solutionsError &&
-                                solutions.length >
-                                0 && (
-
-                                    <div
-                                        className="
-                                            space-y-5
-                                        "
-                                    >
-
-                                        {solutions.map(
-                                            (
-                                                solution
-                                            ) => (
+                                            <section>
+                                                <SectionTitle>
+                                                    Case Information
+                                                </SectionTitle>
 
                                                 <div
-                                                    key={
-                                                        solution.solution_id
-                                                    }
                                                     className="
-                                                        p-6
+                                            grid
+                                            grid-cols-1
+                                            gap-4
 
-                                                        rounded-[5px]
-
-                                                        border
-                                                        border-[#dce4de]
-
-                                                        bg-white
-                                                    "
+                                            sm:grid-cols-2
+                                            lg:grid-cols-4
+                                        "
                                                 >
+                                                    <InfoField
+                                                        label="Case"
+                                                        value={
+                                                            selectedCase.report_id
+                                                        }
+                                                    />
 
-                                                    <div
-                                                        className="
-                                                            flex
-                                                            flex-col
+                                                    <InfoField
+                                                        label="Site"
+                                                        value={
+                                                            selectedCase.site
+                                                        }
+                                                    />
 
-                                                            gap-3
+                                                    <InfoField
+                                                        label="Case Status"
+                                                        value="Resolved"
+                                                    />
 
-                                                            md:flex-row
-                                                            md:items-start
-                                                            md:justify-between
-                                                        "
-                                                    >
-
-                                                        <div>
-
-                                                            <span
-                                                                className="
-                                                                    block
-
-                                                                    text-[#718078]
-
-                                                                    text-[10px]
-                                                                    font-extrabold
-
-                                                                    tracking-[0.12em]
-                                                                "
-                                                            >
-                                                                SOLUTION
-                                                            </span>
-
-                                                            <h4
-                                                                className="
-                                                                    mt-2
-
-                                                                    text-[#17211b]
-
-                                                                    text-[17px]
-                                                                    font-extrabold
-                                                                "
-                                                            >
-                                                                {
-                                                                    solution.solution_id
-                                                                }
-                                                            </h4>
-
-                                                        </div>
+                                                    <InfoField
+                                                        label="Resolved"
+                                                        value={formatDateTime(
+                                                            selectedCase.resolved_at
+                                                        )}
+                                                    />
+                                                </div>
+                                            </section>
 
 
-                                                        <span
-                                                            className="
-                                                                w-fit
+                                            {/* INCIDENT INFORMATION */}
 
-                                                                px-3
-                                                                py-1.5
-
-                                                                rounded-full
-
-                                                                bg-[#eaf4ee]
-
-                                                                text-[#087542]
-
-                                                                text-[10px]
-                                                                font-extrabold
-                                                            "
-                                                        >
-                                                            {
-                                                                solution.status
-                                                            }
-                                                        </span>
-
-                                                    </div>
-
-
-                                                    <div
-                                                        className="
-                                                            mt-6
-                                                        "
-                                                    >
-
-                                                        <InfoField
-                                                            label="Review Cycle"
-                                                            value={
-                                                                solution.review_cycle ||
-                                                                1
-                                                            }
-                                                        />
-
-                                                    </div>
-
-
-                                                    <div
-                                                        className="
-                                                            mt-5
-                                                        "
-                                                    >
-
-                                                        <span
-                                                            className="
-                                                                block
-
-                                                                mb-2
-
-                                                                text-[#718078]
-
-                                                                text-[10px]
-                                                                font-extrabold
-
-                                                                tracking-[0.12em]
-                                                            "
-                                                        >
-                                                            SOLUTION
-                                                        </span>
+                                            {problemDetailFields.length >
+                                                0 && (
+                                                    <section>
+                                                        <SectionTitle>
+                                                            Incident Information
+                                                        </SectionTitle>
 
                                                         <div
                                                             className="
-                                                                p-5
+                                                overflow-hidden
 
-                                                                rounded-[5px]
+                                                rounded-[5px]
 
-                                                                border
-                                                                border-[#e2e9e4]
+                                                border
+                                                border-[#dce4de]
 
-                                                                bg-[#f9fbfa]
-
-                                                                text-[#4f5d55]
-
-                                                                text-[14px]
-                                                                leading-[1.8]
-
-                                                                whitespace-pre-wrap
-                                                            "
+                                                bg-white
+                                            "
                                                         >
-                                                            {
-                                                                solution.solution_text
-                                                            }
+                                                            {problemDetailFields.map(
+                                                                (
+                                                                    [label, value],
+                                                                    index
+                                                                ) => (
+                                                                    <div
+                                                                        key={label}
+                                                                        className="
+                                                            grid
+                                                            grid-cols-1
+                                                            gap-2
+
+                                                            px-5
+                                                            py-4
+
+                                                            border-b
+                                                            border-[#e8ede9]
+
+                                                            last:border-b-0
+
+                                                            sm:grid-cols-[230px_1fr]
+
+                                                            hover:bg-[#f9fbfa]
+                                                        "
+                                                                    >
+                                                                        <span
+                                                                            className="
+                                                                text-[#718078]
+                                                                text-[10px]
+                                                                font-extrabold
+                                                                tracking-[0.12em]
+                                                            "
+                                                                        >
+                                                                            {label}
+                                                                        </span>
+
+                                                                        <span
+                                                                            className="
+                                                                break-words
+
+                                                                text-[#33423a]
+                                                                text-[13px]
+                                                                leading-[1.6]
+                                                                font-semibold
+                                                            "
+                                                                        >
+                                                                            {formatDisplayValue(
+                                                                                value
+                                                                            )}
+                                                                        </span>
+                                                                    </div>
+                                                                )
+                                                            )}
                                                         </div>
+                                                    </section>
+                                                )}
 
-                                                    </div>
+
+                                            {/* REPORT DESCRIPTION */}
+
+                                            {hasEnteredValue(
+                                                selectedCase.report_text
+                                            ) && (
+                                                    <section>
+                                                        <SectionTitle>
+                                                            Problem Description
+                                                        </SectionTitle>
+
+                                                        <DetailBox>
+                                                            {
+                                                                selectedCase.report_text
+                                                            }
+                                                        </DetailBox>
+                                                    </section>
+                                                )}
 
 
-                                                    {solution.attachments &&
-                                                        solution
-                                                            .attachments
-                                                            .length >
-                                                        0 && (
+                                            {/* ACTUAL OUTCOME */}
 
-                                                            <div
-                                                                className="
-                                                                    mt-6
-                                                                "
-                                                            >
+                                            {hasEnteredValue(
+                                                selectedCase.actual_outcome
+                                            ) && (
+                                                    <section>
+                                                        <SectionTitle>
+                                                            Actual Outcome
+                                                        </SectionTitle>
 
-                                                                <span
-                                                                    className="
-                                                                        block
+                                                        <DetailBox>
+                                                            {
+                                                                selectedCase.actual_outcome
+                                                            }
+                                                        </DetailBox>
+                                                    </section>
+                                                )}
 
-                                                                        mb-3
 
-                                                                        text-[#718078]
+                                            {/* POST INCIDENT */}
 
-                                                                        text-[10px]
-                                                                        font-extrabold
+                                            {hasEnteredValue(
+                                                selectedCase.post_incident_measures
+                                            ) && (
+                                                    <section>
+                                                        <SectionTitle>
+                                                            Post-Incident Measures
+                                                        </SectionTitle>
 
-                                                                        tracking-[0.12em]
-                                                                    "
-                                                                >
-                                                                    ATTACHMENTS
-                                                                </span>
+                                                        <DetailBox>
+                                                            {
+                                                                selectedCase.post_incident_measures
+                                                            }
+                                                        </DetailBox>
+                                                    </section>
+                                                )}
 
-                                                                <div
-                                                                    className="
-                                                                        space-y-2
-                                                                    "
-                                                                >
 
-                                                                    {solution.attachments.map(
-                                                                        (
-                                                                            attachment,
+                                            {/* ATTACHMENTS */}
+
+                                            {selectedCase.attachments?.length >
+                                                0 && (
+                                                    <section>
+                                                        <SectionTitle>
+                                                            Attachments
+                                                        </SectionTitle>
+
+                                                        <div className="space-y-2">
+                                                            {selectedCase.attachments.map(
+                                                                (
+                                                                    attachment,
+                                                                    index
+                                                                ) => (
+                                                                    <a
+                                                                        key={
+                                                                            attachment._id ||
+                                                                            attachment.url ||
                                                                             index
-                                                                        ) => (
+                                                                        }
+                                                                        href={
+                                                                            attachment.url
+                                                                        }
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="
+                                                            flex
+                                                            items-center
+                                                            justify-between
 
-                                                                            <a
-                                                                                key={
-                                                                                    attachment._id ||
-                                                                                    `${attachment.name}-${index}`
-                                                                                }
-                                                                                href={
-                                                                                    attachment.url
-                                                                                }
-                                                                                target="_blank"
-                                                                                rel="noreferrer"
-                                                                                className="
-                                                                                    flex
-                                                                                    items-center
-                                                                                    justify-between
+                                                            gap-4
 
-                                                                                    gap-4
+                                                            p-4
 
-                                                                                    p-4
+                                                            rounded-[5px]
 
-                                                                                    rounded-[4px]
+                                                            border
+                                                            border-[#dce4de]
 
-                                                                                    border
-                                                                                    border-[#dce4de]
+                                                            bg-[#f9fbfa]
 
-                                                                                    bg-white
+                                                            no-underline
 
-                                                                                    no-underline
+                                                            hover:bg-[#f2f7f4]
+                                                        "
+                                                                    >
+                                                                        <span
+                                                                            className="
+                                                                truncate
 
-                                                                                    hover:bg-[#f5f8f6]
-                                                                                "
-                                                                            >
+                                                                text-[#33423a]
+                                                                text-[13px]
+                                                                font-semibold
+                                                            "
+                                                                        >
+                                                                            {
+                                                                                attachment.name
+                                                                            }
+                                                                        </span>
 
-                                                                                <span
-                                                                                    className="
-                                                                                        truncate
+                                                                        <span
+                                                                            className="
+                                                                shrink-0
 
-                                                                                        text-[#33423a]
+                                                                text-[#087542]
+                                                                text-[11px]
+                                                                font-extrabold
+                                                            "
+                                                                        >
+                                                                            Open →
+                                                                        </span>
+                                                                    </a>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    </section>
+                                                )}
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
-                                                                                        text-[13px]
-                                                                                        font-semibold
-                                                                                    "
-                                                                                >
-                                                                                    {
-                                                                                        attachment.name
-                                                                                    }
-                                                                                </span>
 
-                                                                                <span
-                                                                                    className="
-                                                                                        shrink-0
+                            {/* =================================================
+                    TAB 2 — TEAM PROPOSAL
+                ================================================= */}
 
-                                                                                        text-[#087542]
+                            {activeTab === "proposal" && (
+                                <div
+                                    className="
+                            px-8
+                            py-8
 
-                                                                                        text-[11px]
-                                                                                        font-extrabold
-                                                                                    "
-                                                                                >
-                                                                                    Open →
-                                                                                </span>
+                            space-y-8
+                        "
+                                >
 
-                                                                            </a>
+                                    {proposalLoading ? (
+                                        <LoadingBlock
+                                            text="Loading assigned team proposal..."
+                                        />
+                                    ) : !assignedProposal ? (
+                                        <div
+                                            className="
+                                    p-8
 
-                                                                        )
-                                                                    )}
+                                    rounded-[5px]
 
-                                                                </div>
+                                    border
+                                    border-[#dce4de]
 
-                                                            </div>
+                                    bg-[#f9fbfa]
 
+                                    text-center
+                                "
+                                        >
+                                            <div
+                                                className="
+                                        mx-auto
+
+                                        w-12
+                                        h-12
+
+                                        flex
+                                        items-center
+                                        justify-center
+
+                                        rounded-full
+
+                                        bg-[#edf3ef]
+
+                                        text-[#718078]
+                                        text-[20px]
+                                    "
+                                            >
+                                                —
+                                            </div>
+
+                                            <h3
+                                                className="
+                                        mt-5
+
+                                        text-[#17211b]
+                                        text-[18px]
+                                        font-extrabold
+                                    "
+                                            >
+                                                Assigned proposal unavailable
+                                            </h3>
+
+                                            <p
+                                                className="
+                                        max-w-[480px]
+
+                                        mx-auto
+                                        mt-2
+
+                                        text-[#718078]
+                                        text-[13px]
+                                        leading-[1.7]
+                                    "
+                                            >
+                                                The team assigned to this
+                                                resolved case could not be
+                                                matched to a stored proposal.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* ASSIGNMENT SUMMARY */}
+
+                                            <section>
+                                                <SectionTitle>
+                                                    Assigned Team
+                                                </SectionTitle>
+
+                                                <div
+                                                    className="
+                                            grid
+                                            grid-cols-1
+                                            gap-4
+
+                                            sm:grid-cols-2
+                                            lg:grid-cols-4
+                                        "
+                                                >
+                                                    <InfoField
+                                                        label="Team"
+                                                        value={
+                                                            assignedProposal.team_name ||
+                                                            selectedCase.assigned_team
+                                                        }
+                                                    />
+
+                                                    <InfoField
+                                                        label="Team ID"
+                                                        value={
+                                                            assignedProposal.team_id
+                                                        }
+                                                    />
+
+                                                    <InfoField
+                                                        label="Team Leader Email"
+                                                        value={
+                                                            assignedProposal.team_leader_email
+                                                        }
+                                                    />
+
+                                                    <InfoField
+                                                        label="Submitted"
+                                                        value={formatDateTime(
+                                                            assignedProposal.createdAt
                                                         )}
-
+                                                    />
                                                 </div>
+                                            </section>
 
-                                            )
-                                        )}
 
+                                            {/* PROPOSAL */}
+
+                                            {hasEnteredValue(
+                                                assignedProposal.solution_proposal
+                                            ) && (
+                                                    <section>
+                                                        <SectionTitle>
+                                                            Team Proposal
+                                                        </SectionTitle>
+
+                                                        <DetailBox>
+                                                            {
+                                                                assignedProposal.solution_proposal
+                                                            }
+                                                        </DetailBox>
+                                                    </section>
+                                                )}
+
+
+                                            {/* PROPOSAL ATTACHMENTS */}
+
+                                            {assignedProposal.attachments?.length >
+                                                0 && (
+                                                    <section>
+                                                        <SectionTitle>
+                                                            Proposal Attachments
+                                                        </SectionTitle>
+
+                                                        <div className="space-y-2">
+                                                            {assignedProposal.attachments.map(
+                                                                (
+                                                                    attachment,
+                                                                    index
+                                                                ) => (
+                                                                    <a
+                                                                        key={
+                                                                            attachment._id ||
+                                                                            attachment.url ||
+                                                                            index
+                                                                        }
+                                                                        href={
+                                                                            attachment.url
+                                                                        }
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="
+                                                            flex
+                                                            items-center
+                                                            justify-between
+
+                                                            gap-4
+
+                                                            p-4
+
+                                                            rounded-[5px]
+
+                                                            border
+                                                            border-[#dce4de]
+
+                                                            bg-[#f9fbfa]
+
+                                                            no-underline
+
+                                                            hover:bg-[#f2f7f4]
+                                                        "
+                                                                    >
+                                                                        <span
+                                                                            className="
+                                                                truncate
+
+                                                                text-[#33423a]
+                                                                text-[13px]
+                                                                font-semibold
+                                                            "
+                                                                        >
+                                                                            {
+                                                                                attachment.name
+                                                                            }
+                                                                        </span>
+
+                                                                        <span
+                                                                            className="
+                                                                shrink-0
+
+                                                                text-[#087542]
+                                                                text-[11px]
+                                                                font-extrabold
+                                                            "
+                                                                        >
+                                                                            Open →
+                                                                        </span>
+                                                                    </a>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    </section>
+                                                )}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+
+                            {/* =================================================
+                    TAB 3 — SOLUTIONS
+                ================================================= */}
+
+                            {activeTab === "solutions" && (
+                                <div
+                                    className="
+                            px-8
+                            py-8
+                        "
+                                >
+
+                                    <div
+                                        className="
+                                flex
+                                items-center
+                                justify-between
+
+                                gap-4
+
+                                mb-6
+                            "
+                                    >
+                                        <div>
+                                            <SectionTitle>
+                                                Solutions Offered
+                                            </SectionTitle>
+
+                                            <p
+                                                className="
+                                        mt-[-12px]
+
+                                        text-[#718078]
+                                        text-[12px]
+                                    "
+                                            >
+                                                Complete solution history
+                                                for this resolved case.
+                                            </p>
+                                        </div>
+
+                                        <span
+                                            className="
+                                    shrink-0
+
+                                    px-3
+                                    py-1.5
+
+                                    rounded-full
+
+                                    bg-[#eaf4ee]
+
+                                    text-[#087542]
+                                    text-[10px]
+                                    font-extrabold
+                                "
+                                        >
+                                            {solutions.length}
+                                        </span>
                                     </div>
 
-                                )}
 
+                                    {solutionsError && (
+                                        <div
+                                            className="
+                                    p-5
+
+                                    rounded-[5px]
+
+                                    border
+                                    border-[#f0cccc]
+
+                                    bg-[#fff6f6]
+
+                                    text-[#c62828]
+                                    text-[13px]
+                                    font-bold
+                                "
+                                        >
+                                            {solutionsError}
+                                        </div>
+                                    )}
+
+
+                                    {!solutionsError &&
+                                        solutions.length === 0 && (
+                                            <div
+                                                className="
+                                        p-8
+
+                                        rounded-[5px]
+
+                                        border
+                                        border-[#dce4de]
+
+                                        bg-[#f9fbfa]
+
+                                        text-[#718078]
+                                        text-[13px]
+
+                                        text-center
+                                    "
+                                            >
+                                                No solution history was found
+                                                for this case.
+                                            </div>
+                                        )}
+
+
+                                    {solutions.length > 0 && (
+                                        <div className="space-y-5">
+                                            {solutions.map(
+                                                (solution) => (
+                                                    <div
+                                                        key={
+                                                            solution.solution_id
+                                                        }
+                                                        className="
+                                                overflow-hidden
+
+                                                rounded-[5px]
+
+                                                border
+                                                border-[#dce4de]
+
+                                                bg-white
+                                            "
+                                                    >
+                                                        {/* SOLUTION HEADER */}
+
+                                                        <div
+                                                            className="
+                                                    flex
+                                                    flex-col
+
+                                                    gap-3
+
+                                                    p-6
+
+                                                    border-b
+                                                    border-[#e6ebe7]
+
+                                                    md:flex-row
+                                                    md:items-start
+                                                    md:justify-between
+                                                "
+                                                        >
+                                                            <div>
+                                                                <span
+                                                                    className="
+                                                            block
+
+                                                            text-[#718078]
+                                                            text-[10px]
+                                                            font-extrabold
+                                                            tracking-[0.12em]
+                                                        "
+                                                                >
+                                                                    REVIEW CYCLE
+                                                                </span>
+
+                                                                <h4
+                                                                    className="
+                                                            mt-2
+
+                                                            text-[#17211b]
+                                                            text-[20px]
+                                                            font-extrabold
+                                                        "
+                                                                >
+                                                                    Cycle{" "}
+                                                                    {
+                                                                        solution.review_cycle ||
+                                                                        1
+                                                                    }
+                                                                </h4>
+
+                                                                <p
+                                                                    className="
+                                                            mt-2
+
+                                                            text-[#087542]
+                                                            text-[11px]
+                                                            font-extrabold
+                                                        "
+                                                                >
+                                                                    {
+                                                                        solution.solution_id
+                                                                    }
+                                                                </p>
+                                                            </div>
+
+                                                            <span
+                                                                className="
+                                                        w-fit
+
+                                                        px-3
+                                                        py-1.5
+
+                                                        rounded-full
+
+                                                        bg-[#eaf4ee]
+
+                                                        text-[#087542]
+                                                        text-[10px]
+                                                        font-extrabold
+                                                    "
+                                                            >
+                                                                {
+                                                                    solution.status
+                                                                }
+                                                            </span>
+                                                        </div>
+
+
+                                                        {/* SOLUTION BODY */}
+
+                                                        <div
+                                                            className="
+                                                    p-6
+
+                                                    space-y-5
+                                                "
+                                                        >
+                                                            <div
+                                                                className="
+                                                        grid
+                                                        grid-cols-1
+
+                                                        gap-4
+
+                                                        sm:grid-cols-2
+                                                    "
+                                                            >
+                                                                <InfoField
+                                                                    label="Solution ID"
+                                                                    value={
+                                                                        solution.solution_id
+                                                                    }
+                                                                />
+
+                                                                <InfoField
+                                                                    label="Review Cycle"
+                                                                    value={
+                                                                        solution.review_cycle ||
+                                                                        1
+                                                                    }
+                                                                />
+                                                            </div>
+
+
+                                                            <div>
+                                                                <span
+                                                                    className="
+                                                            block
+                                                            mb-2
+
+                                                            text-[#718078]
+                                                            text-[10px]
+                                                            font-extrabold
+                                                            tracking-[0.12em]
+                                                        "
+                                                                >
+                                                                    SOLUTION
+                                                                </span>
+
+                                                                <DetailBox>
+                                                                    {
+                                                                        solution.solution_text
+                                                                    }
+                                                                </DetailBox>
+                                                            </div>
+
+
+                                                            {solution.attachments?.length >
+                                                                0 && (
+                                                                    <div>
+                                                                        <span
+                                                                            className="
+                                                                block
+                                                                mb-3
+
+                                                                text-[#718078]
+                                                                text-[10px]
+                                                                font-extrabold
+                                                                tracking-[0.12em]
+                                                            "
+                                                                        >
+                                                                            ATTACHMENTS
+                                                                        </span>
+
+                                                                        <div className="space-y-2">
+                                                                            {solution.attachments.map(
+                                                                                (
+                                                                                    attachment,
+                                                                                    index
+                                                                                ) => (
+                                                                                    <a
+                                                                                        key={
+                                                                                            attachment._id ||
+                                                                                            attachment.url ||
+                                                                                            index
+                                                                                        }
+                                                                                        href={
+                                                                                            attachment.url
+                                                                                        }
+                                                                                        target="_blank"
+                                                                                        rel="noreferrer"
+                                                                                        className="
+                                                                            flex
+                                                                            items-center
+                                                                            justify-between
+
+                                                                            gap-4
+
+                                                                            p-4
+
+                                                                            rounded-[4px]
+
+                                                                            border
+                                                                            border-[#dce4de]
+
+                                                                            bg-[#f9fbfa]
+
+                                                                            no-underline
+
+                                                                            hover:bg-white
+                                                                        "
+                                                                                    >
+                                                                                        <span
+                                                                                            className="
+                                                                                truncate
+
+                                                                                text-[#33423a]
+                                                                                text-[13px]
+                                                                                font-semibold
+                                                                            "
+                                                                                        >
+                                                                                            {
+                                                                                                attachment.name
+                                                                                            }
+                                                                                        </span>
+
+                                                                                        <span
+                                                                                            className="
+                                                                                shrink-0
+
+                                                                                text-[#087542]
+                                                                                text-[11px]
+                                                                                font-extrabold
+                                                                            "
+                                                                                        >
+                                                                                            Open →
+                                                                                        </span>
+                                                                                    </a>
+                                                                                )
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                        </div>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
-
                     </div>
-
                 </div>
-
             )}
 
         </div>
@@ -1589,6 +2514,111 @@ function TableHeader({ children }) {
     );
 }
 
+/* =============================================================
+   SECTION TITLE
+============================================================= */
+
+function SectionTitle({ children }) {
+    return (
+        <div className="mb-5">
+            <h3
+                className="
+                    text-[#17211b]
+                    text-[18px]
+                    font-extrabold
+                "
+            >
+                {children}
+            </h3>
+
+            <div
+                className="
+                    mt-3
+
+                    w-8
+                    h-[2px]
+
+                    bg-[#087542]
+                "
+            />
+        </div>
+    );
+}
+
+
+/* =============================================================
+   DETAIL BOX
+============================================================= */
+
+function DetailBox({ children }) {
+    return (
+        <div
+            className="
+                p-5
+
+                rounded-[5px]
+
+                border
+                border-[#dce5df]
+
+                bg-[#f9fbfa]
+
+                text-[#46534b]
+                text-[13px]
+                leading-[1.75]
+
+                whitespace-pre-wrap
+            "
+        >
+            {children}
+        </div>
+    );
+}
+
+
+/* =============================================================
+   LOADING BLOCK
+============================================================= */
+
+function LoadingBlock({ text }) {
+    return (
+        <div
+            className="
+                py-16
+
+                flex
+                flex-col
+                items-center
+            "
+        >
+            <div
+                className="
+                    w-9
+                    h-9
+
+                    rounded-full
+
+                    border-4
+                    border-[#dce8e0]
+                    border-t-[#087542]
+
+                    animate-spin
+                "
+            />
+
+            <p
+                className="
+                    mt-4
+
+                    text-[#718078]
+                    text-[13px]
+                "
+            >
+                {text}
+            </p>
+        </div>
+    );
+}
 
 /* =============================================================
    INFO FIELD
