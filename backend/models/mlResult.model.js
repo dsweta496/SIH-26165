@@ -7,8 +7,10 @@ const mongoose = require("mongoose");
 
 const mlResultSchema = new mongoose.Schema(
     {
-                // REPORT REFERENCE
-        
+        // ==========================================
+        // REPORT REFERENCE
+        // ==========================================
+
         report_id: {
             type: String,
             required: true,
@@ -16,8 +18,10 @@ const mlResultSchema = new mongoose.Schema(
         },
 
 
-                // MODEL INFORMATION
-        
+        // ==========================================
+        // MODEL INFORMATION
+        // ==========================================
+
         model_name: {
             type: String,
             default: "MuRIL",
@@ -29,8 +33,10 @@ const mlResultSchema = new mongoose.Schema(
         },
 
 
-                // STRUCTURED SAFETY EXTRACTION
-        
+        // ==========================================
+        // STRUCTURED SAFETY EXTRACTION
+        // ==========================================
+
         activity: {
             type: String,
             default: "NOT_STATED",
@@ -96,6 +102,7 @@ const mlResultSchema = new mongoose.Schema(
             default: "NOT_STATED",
         },
 
+
         barrier_function: {
             type: String,
             enum: [
@@ -106,6 +113,18 @@ const mlResultSchema = new mongoose.Schema(
                 "NOT_STATED",
             ],
             default: "NOT_STATED",
+        },
+
+        barrier_failure_confidence: {
+            type: Number,
+            min: 0,
+            max: 1,
+            default: null,
+        },
+
+        barrier_function_score: {
+            type: Number,
+            default: null,
         },
 
         potential_consequence: {
@@ -119,8 +138,10 @@ const mlResultSchema = new mongoose.Schema(
         },
 
 
-                // SIF INTELLIGENCE
-        
+        // ==========================================
+        // SIF INTELLIGENCE
+        // ==========================================
+
         sif_potential: {
             type: Boolean,
             required: true,
@@ -145,24 +166,76 @@ const mlResultSchema = new mongoose.Schema(
         },
 
 
-                // IOGP LIFE-SAVING RULES
-        
+        // ==========================================
+        // IOGP LIFE-SAVING RULES
+        // ==========================================
+
         lsr_tags: {
             type: [String],
             default: [],
         },
 
+        lsr_evidence_grounded: {
+            type: [mongoose.Schema.Types.Mixed],
+            default: [],
+        },
 
-                // EVIDENCE
-        
+        lsr_unsupported: {
+            type: [mongoose.Schema.Types.Mixed],
+            default: [],
+        },
+
+
+        // ==========================================
+        // EVIDENCE
+        // ==========================================
+
         evidence_phrases: {
             type: [String],
             default: [],
         },
 
 
-                // TEMPORAL / PRECURSOR INTELLIGENCE
-        
+        // ==========================================
+        // CANONICAL PRECURSOR INTELLIGENCE
+        // ==========================================
+
+        canonical_precursors: {
+            concepts: {
+                type: [String],
+                default: [],
+            },
+
+            // Preserves the vector produced by the ML pipeline.
+            // This can be used later for similarity / clustering.
+            vector: {
+                type: [Number],
+                default: [],
+            },
+        },
+
+
+        // ==========================================
+        // CONSISTENCY / QUALITY GATE
+        // ==========================================
+
+        consistency_gate: {
+            flags: {
+                type: [String],
+                default: [],
+            },
+
+            outcome: {
+                type: String,
+                default: "NOT_STATED",
+            },
+        },
+
+
+        // ==========================================
+        // TEMPORAL / PRECURSOR INTELLIGENCE
+        // ==========================================
+
         cluster_id: {
             type: String,
             default: null,
@@ -196,10 +269,13 @@ const mlResultSchema = new mongoose.Schema(
             ],
             default: "NOT_STATED",
         },
-
-
-                // SBRI
         
+
+
+        // ==========================================
+        // SBRI
+        // ==========================================
+
         sbri_score: {
             type: Number,
             min: 0,
@@ -245,8 +321,10 @@ const mlResultSchema = new mongoose.Schema(
         },
 
 
-                // HUMAN REVIEW / CORRECTION
-        
+        // ==========================================
+        // HUMAN REVIEW / CORRECTION
+        // ==========================================
+
         review_status: {
             type: String,
             enum: [
@@ -272,14 +350,32 @@ const mlResultSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+
         human_corrections: {
             type: mongoose.Schema.Types.Mixed,
             default: null,
         },
+
     },
 
     {
         timestamps: true,
+    }
+);
+
+
+// ==========================================
+// INDEXES
+// ==========================================
+
+// One ML result per report per model version.
+mlResultSchema.index(
+    {
+        report_id: 1,
+        model_version: 1,
+    },
+    {
+        unique: true,
     }
 );
 

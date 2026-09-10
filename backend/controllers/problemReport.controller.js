@@ -1,5 +1,11 @@
 const ProblemReport = require("../models/problemReport.model");
 
+const MLResult = require("../models/mlResult.model");
+const {
+    analyzeReportWithML,
+    buildMLResultData
+} = require("../services/ml.service");
+
 const crypto = require("crypto");
 
 const {
@@ -677,6 +683,143 @@ const createProblemReport = async (req, res) => {
                 reportData
             );
 
+        // =========================
+        // ML ANALYSIS
+        // =========================
+
+        let mlAnalysisStatus = {
+            attempted: false,
+            completed: false,
+            saved: false,
+        };
+
+        try {
+            mlAnalysisStatus.attempted = true;
+
+            console.log(
+                `[ML] Analyzing report ${report.report_id}...`
+            );
+
+            const mlAnalysis =
+                await analyzeReportWithML(
+                    report.report_text
+                );
+
+            mlAnalysisStatus.completed = true;
+
+            console.log(
+                `[ML] Analysis completed for ${report.report_id}`
+            );
+
+            const mlResultData =
+                buildMLResultData(
+                    report,
+                    mlAnalysis
+                );
+
+            await MLResult.create(
+                mlResultData
+            );
+
+            // ==========================================
+            // SYNC ML RESULTS BACK TO PROBLEM REPORT
+            // ==========================================
+
+            await ProblemReport.findOneAndUpdate(
+                {
+                    report_id: report.report_id,
+                },
+                {
+                    sif_potential:
+                        mlAnalysis?.sif?.prediction === "SIF Potential",
+
+                    sif_level:
+                        mlAnalysis?.sif?.level ||
+                        "NOT_STATED",
+
+                    sif_score:
+                        Number.isFinite(
+                            Number(mlAnalysis?.sbri?.score)
+                        )
+                            ? Math.min(
+                                100,
+                                Math.max(
+                                    0,
+                                    Number(mlAnalysis.sbri.score)
+                                )
+                            )
+                            : null,
+
+                    lsr_tags:
+                        mlAnalysis?.lsr?.predictions
+                            ?.map((item) => item?.label)
+                            .filter(Boolean) || [],
+
+                    evidence_phrases:
+                        mlAnalysis?.evidence?.matches
+                            ?.map((item) => item?.matched_phrase)
+                            .filter(Boolean) || [],
+
+                    barrier_or_control:
+                        report.barrier_or_control ||
+                        "NOT_STATED",
+
+                    barrier_failure_mode:
+                        mlAnalysis?.barrier_failure?.prediction ||
+                        "NOT_STATED",
+
+                    barrier_function:
+                        (() => {
+                            const value =
+                                mlAnalysis?.barrier_function?.prediction;
+
+                            if (!value) {
+                                return "NOT_STATED";
+                            }
+
+                            const normalized =
+                                String(value)
+                                    .trim()
+                                    .toLowerCase();
+
+                            return [
+                                "prevention",
+                                "detection",
+                                "control",
+                                "mitigation",
+                            ].includes(normalized)
+                                ? normalized
+                                : "NOT_STATED";
+                        })(),
+                },
+                {
+                    new: true,
+                    runValidators: true,
+                }
+            );
+
+            console.log(
+                `[ML] ProblemReport ${report.report_id} synchronized with ML results`
+            );
+
+            mlAnalysisStatus.saved = true;
+
+            console.log(
+                `[ML] Result saved for ${report.report_id}`
+            );
+
+        } catch (mlError) {
+            console.error(
+                `[ML] Analysis failed for ${report.report_id}:`,
+                mlError.message
+            );
+        }
+
+
+        const updatedReport =
+            await ProblemReport.findOne({
+                report_id: report.report_id,
+            }).lean();
 
         return res.status(201).json({
             success: true,
@@ -685,7 +828,10 @@ const createProblemReport = async (req, res) => {
                 "Problem report submitted for review",
 
             data:
-                report,
+                updatedReport,
+
+            ml_analysis:
+                mlAnalysisStatus,
         });
 
     } catch (error) {

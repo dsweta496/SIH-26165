@@ -3,7 +3,7 @@ const MLResult = require("../models/mlResult.model");
 
 
 // POST /api/ml/analyze
-// Store structured extraction from ML service
+// Store complete structured extraction from ML service
 
 const analyzeReport = async (req, res) => {
     try {
@@ -11,22 +11,48 @@ const analyzeReport = async (req, res) => {
             report_id,
             model_name,
             model_version,
+
             activity,
             location,
             equipment,
             language_style,
+
             hazard,
             energy_source,
             exposure,
             unsafe_act_condition,
+
             barrier_or_control,
             barrier_failure_mode,
             barrier_function,
+
             potential_consequence,
             actual_outcome,
+
+            sif_potential,
+            sif_confidence,
+            sif_level,
+
+            lsr_tags,
             evidence_phrases,
+
+            cluster_id,
+            recurrence_count,
+            trend,
+            barrier_health,
+
+            sbri_score,
+            sbri_drivers,
+
+            consistency_gate,
+            canonical_precursors,
+
+            review_status,
+            correction_notes,
+            human_corrections,
         } = req.body;
 
+        // Required fields
         if (!report_id || !model_version) {
             return res.status(400).json({
                 success: false,
@@ -35,6 +61,7 @@ const analyzeReport = async (req, res) => {
             });
         }
 
+        // Make sure the original report exists
         const report = await ProblemReport.findOne({
             report_id,
         });
@@ -46,6 +73,7 @@ const analyzeReport = async (req, res) => {
             });
         }
 
+        // Store the complete ML result
         const result = await MLResult.findOneAndUpdate(
             {
                 report_id,
@@ -55,20 +83,45 @@ const analyzeReport = async (req, res) => {
                 report_id,
                 model_name,
                 model_version,
+
                 activity,
                 location,
                 equipment,
                 language_style,
+
                 hazard,
                 energy_source,
                 exposure,
                 unsafe_act_condition,
+
                 barrier_or_control,
                 barrier_failure_mode,
                 barrier_function,
+
                 potential_consequence,
                 actual_outcome,
+
+                sif_potential,
+                sif_confidence,
+                sif_level,
+
+                lsr_tags,
                 evidence_phrases,
+
+                cluster_id,
+                recurrence_count,
+                trend,
+                barrier_health,
+
+                sbri_score,
+                sbri_drivers,
+
+                consistency_gate,
+                canonical_precursors,
+
+                review_status,
+                correction_notes,
+                human_corrections,
             },
             {
                 new: true,
@@ -80,9 +133,10 @@ const analyzeReport = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "ML analysis stored successfully",
+            message: "Complete ML analysis stored successfully",
             data: result,
         });
+
     } catch (error) {
         console.error(
             "ML analyze error:",
@@ -513,9 +567,47 @@ const getSiteAggregates = async (req, res) => {
     }
 };
 
+// Get ML analysis result for a specific report
+const getMLResultByReportId = async (req, res) => {
+    try {
+        const { reportId } = req.params;
+
+        if (!reportId) {
+            return res.status(400).json({
+                success: false,
+                message: "Report ID is required",
+            });
+        }
+
+        const result = await MLResult.findOne({
+            report_id: reportId,
+        }).lean();
+
+        if (!result) {
+            return res.status(404).json({
+                success: false,
+                message: "ML analysis not found for this report",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        console.error("Get ML result error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch ML analysis",
+            error: error.message,
+        });
+    }
+};
 
 module.exports = {
     analyzeReport,
+    getMLResultByReportId,
     classifyReport,
     assignCluster,
     getClusters,

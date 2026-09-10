@@ -7,6 +7,7 @@ const {
     getClusters,
     getClusterById,
     getSiteAggregates,
+    getMLResultByReportId
 } = require("../controllers/ml.controller");
 
 const {
@@ -68,5 +69,7 @@ router.get(
     "/metrics",
     getMLMetrics
 );
+
+router.get("/report/:reportId", getMLResultByReportId);
 
 module.exports = router;
