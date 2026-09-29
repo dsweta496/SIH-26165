@@ -11,6 +11,7 @@ import AdminReview from "./pages/admin/AdminReview";
 import AdminActiveCases from "./pages/admin/AdminActiveCases";
 import AdminPendingSolutions from "./pages/admin/AdminPendingSolutions";
 import AdminPastCaseHistory from "./pages/admin/AdminPastCaseHistory";
+import PrecursorIntelligence from "./pages/admin/PrecursorIntelligence";
 import TeamProposal from "./pages/public/TeamProposal";
 import TeamSignup from "./pages/public/TeamSignup";
 import CreateProblemReport from "./pages/public/CreateProblemReport";
@@ -47,6 +48,12 @@ function App() {
                     path="/admin/history"
                     element={<AdminPastCaseHistory />}
                 />
+
+                <Route
+                    path="/admin/precursors"
+                    element={<PrecursorIntelligence />}
+                />
+
                 <Route
                     path="/team-proposal/:reportId"
                     element={<TeamProposal />}

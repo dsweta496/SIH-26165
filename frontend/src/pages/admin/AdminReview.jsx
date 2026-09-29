@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import AdminSidebar from "../../components/AdminSidebar";
+import api from "../../api/axios";
+import AISafetyIntelligence from "../../components/AISafetyIntelligence";
 
 import {
     getPendingProblemReports,
@@ -27,6 +29,16 @@ function AdminReview() {
 
     const [reviewerNotes, setReviewerNotes] = useState("");
     const [submitting, setSubmitting] = useState(false);
+
+    // AI human-review state. Kept separate from the existing
+    // report approval/rejection workflow.
+    const [mlResult, setMlResult] = useState(null);
+    const [mlLoading, setMlLoading] = useState(false);
+    const [mlReviewSubmitting, setMlReviewSubmitting] = useState(false);
+    const [mlReviewError, setMlReviewError] = useState("");
+    const [mlReviewMessage, setMlReviewMessage] = useState("");
+    const [mlCorrectionNotes, setMlCorrectionNotes] = useState("");
+    const [mlCorrections, setMlCorrections] = useState({});
 
 
     /* =========================================================
@@ -85,6 +97,43 @@ function AdminReview() {
             setReviewerNotes(
                 report?.reviewer_notes || ""
             );
+
+            // Load the persisted AI result for the same report.
+            // A missing ML result must not break the existing review queue.
+            setMlResult(null);
+            setMlReviewError("");
+            setMlReviewMessage("");
+            setMlCorrectionNotes("");
+            setMlCorrections({});
+            setMlLoading(true);
+
+            try {
+                const mlResponse = await api.get(
+                    `/ml/report/${encodeURIComponent(reportId)}`
+                );
+
+                const result = mlResponse?.data?.data || null;
+
+                setMlResult(result);
+                setMlCorrectionNotes(
+                    result?.correction_notes || ""
+                );
+                setMlCorrections(
+                    result?.human_corrections || {}
+                );
+            } catch (mlError) {
+                console.warn(
+                    "ML result unavailable for report:",
+                    mlError
+                );
+                setMlReviewError(
+                    mlError?.response?.status === 404
+                        ? "No AI analysis is available for this report yet."
+                        : "Unable to load the AI safety analysis."
+                );
+            } finally {
+                setMlLoading(false);
+            }
         } catch (err) {
             console.error(
                 "Load report detail error:",
@@ -114,6 +163,11 @@ function AdminReview() {
         setReviewerNotes("");
         setDetailError("");
         setActionError("");
+        setMlResult(null);
+        setMlReviewError("");
+        setMlReviewMessage("");
+        setMlCorrectionNotes("");
+        setMlCorrections({});
     };
 
 
@@ -173,6 +227,104 @@ function AdminReview() {
 
 
     /* =========================================================
+       AI HUMAN REVIEW
+
+       This is intentionally separate from the existing
+       Approve / Reject report workflow.
+    ========================================================= */
+
+    const updateMlCorrection = (field, value) => {
+        setMlCorrections((current) => ({
+            ...current,
+            [field]: value,
+        }));
+    };
+
+    const updateMlCorrectionArray = (field, value) => {
+        updateMlCorrection(
+            field,
+            value
+                .split(",")
+                .map((item) => item.trim())
+                .filter(Boolean)
+        );
+    };
+
+    const handleMlReview = async (decision) => {
+        if (!mlResult) {
+            return;
+        }
+
+        if (
+            decision === "correct" &&
+            Object.keys(mlCorrections).length === 0
+        ) {
+            setMlReviewError(
+                "Add at least one correction before submitting a corrected AI result."
+            );
+            return;
+        }
+
+        const confirmed = window.confirm(
+            decision === "agree"
+                ? "Agree with this AI result and record the human review?"
+                : "Save these corrections and record the human review?"
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            setMlReviewSubmitting(true);
+            setMlReviewError("");
+            setMlReviewMessage("");
+
+            const response = await api.post("/ml/review", {
+                report_id: mlResult.report_id,
+                model_version: mlResult.model_version,
+                decision,
+                corrections:
+                    decision === "correct"
+                        ? mlCorrections
+                        : {},
+                correction_notes: mlCorrectionNotes,
+            });
+
+            const updated = response?.data?.data;
+
+            setMlResult(updated || {
+                ...mlResult,
+                review_status:
+                    decision === "agree"
+                        ? "reviewed"
+                        : "corrected",
+                correction_notes: mlCorrectionNotes,
+                human_corrections:
+                    decision === "correct"
+                        ? mlCorrections
+                        : mlResult.human_corrections,
+            });
+
+            setMlReviewMessage(
+                decision === "agree"
+                    ? "AI result accepted. Human review has been recorded."
+                    : "AI result corrected. The correction has been recorded."
+            );
+        } catch (err) {
+            console.error("ML review error:", err);
+
+            setMlReviewError(
+                err?.response?.data?.message ||
+                "Unable to save the AI human review."
+            );
+        } finally {
+            setMlReviewSubmitting(false);
+        }
+    };
+
+
+    /* =========================================================
        DATE FORMAT
     ========================================================= */
 
@@ -207,15 +359,27 @@ function AdminReview() {
     ========================================================= */
 
     const getSifLabel = (report) => {
-        if (report?.sif_level) {
+        const level = String(report?.sif_level || "")
+            .trim()
+            .toUpperCase();
+
+        if (
+            level &&
+            level !== "NOT_STATED" &&
+            level !== "NOT STATED"
+        ) {
             return report.sif_level;
         }
 
-        if (report?.sif_potential) {
+        if (report?.sif_potential === true) {
             return "SIF Potential";
         }
 
-        return "Not classified";
+        if (report?.sif_potential === false) {
+            return "Not SIF Potential";
+        }
+
+        return "Pending classification";
     };
 
 
@@ -930,7 +1094,7 @@ function AdminReview() {
                                             hover:border-[#b8cec0]
                                             hover:shadow-[0_10px_25px_rgba(20,50,35,0.07)]
 
-                                            md:grid-cols-[1.3fr_1fr_1fr_0.8fr_auto]
+                                            md:grid-cols-[minmax(110px,1.3fr)_minmax(100px,1fr)_minmax(180px,1.6fr)_minmax(90px,0.8fr)_auto]
 
                                             md:items-center
                                         "
@@ -1946,6 +2110,256 @@ function AdminReview() {
 
 
                                             {/* =================================================
+                                                AI SAFETY INTELLIGENCE
+                                            ================================================= */}
+
+                                            <section className="mb-8">
+                                                <AISafetyIntelligence
+                                                    report={selectedReport}
+                                                    reportId={selectedReport.report_id}
+                                                />
+                                            </section>
+
+
+                                            {/* =================================================
+                                                HUMAN AI REVIEW
+                                            ================================================= */}
+
+                                            <section className="mb-8">
+                                                <SectionTitle>
+                                                    Human Review of AI Result
+                                                </SectionTitle>
+
+                                                {mlLoading ? (
+                                                    <div className="flex items-center gap-3 rounded-[5px] border border-[#dce4de] bg-[#f8faf9] px-5 py-5">
+                                                        <div className="h-5 w-5 rounded-full border-2 border-[#dce8e0] border-t-[#087542] animate-spin" />
+                                                        <span className="text-[13px] font-semibold text-[#718078]">
+                                                            Loading persisted AI analysis...
+                                                        </span>
+                                                    </div>
+                                                ) : mlResult ? (
+                                                    <div className="overflow-hidden rounded-[5px] border border-[#dce4de] bg-white">
+
+                                                        <div className="grid grid-cols-1 border-b border-[#dce4de] bg-[#f7faf8] sm:grid-cols-2 lg:grid-cols-4">
+                                                            <MlSummary
+                                                                label="REVIEW STATUS"
+                                                                value={
+                                                                    mlResult.review_status === "reviewed"
+                                                                        ? "Agreed"
+                                                                        : mlResult.review_status === "corrected"
+                                                                            ? "Corrected"
+                                                                            : "Pending Review"
+                                                                }
+                                                            />
+                                                            <MlSummary
+                                                                label="SIF"
+                                                                value={
+                                                                    mlResult.sif_potential
+                                                                        ? `${mlResult.sif_level || "Potential"} · ${Math.round((mlResult.sif_confidence || 0) * 100)}%`
+                                                                        : "Not potential"
+                                                                }
+                                                            />
+                                                            <MlSummary
+                                                                label="SBRI"
+                                                                value={
+                                                                    mlResult.sbri_score === null || mlResult.sbri_score === undefined
+                                                                        ? "—"
+                                                                        : `${Math.round(mlResult.sbri_score * 100)}%`
+                                                                }
+                                                            />
+                                                            <MlSummary
+                                                                label="MODEL"
+                                                                value={`${mlResult.model_name || "MuRIL"} · ${mlResult.model_version || "—"}`}
+                                                            />
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 gap-px bg-[#e3e9e5] sm:grid-cols-2">
+                                                            <MlDetail
+                                                                label="Activity"
+                                                                value={mlResult.activity}
+                                                            />
+                                                            <MlDetail
+                                                                label="Location"
+                                                                value={mlResult.location}
+                                                            />
+                                                            <MlDetail
+                                                                label="Barrier failure"
+                                                                value={mlResult.barrier_failure_mode}
+                                                            />
+                                                            <MlDetail
+                                                                label="Barrier function"
+                                                                value={mlResult.barrier_function}
+                                                            />
+                                                            <MlDetail
+                                                                label="Barrier health"
+                                                                value={mlResult.barrier_health}
+                                                            />
+                                                            <MlDetail
+                                                                label="Trend"
+                                                                value={mlResult.trend}
+                                                            />
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 gap-5 border-t border-[#dce4de] p-5 lg:grid-cols-2">
+                                                            <MlTagList
+                                                                label="IOGP LIFE-SAVING RULES"
+                                                                values={mlResult.lsr_tags}
+                                                            />
+                                                            <MlTagList
+                                                                label="EVIDENCE PHRASES"
+                                                                values={mlResult.evidence_phrases}
+                                                                highlighted
+                                                            />
+                                                        </div>
+
+                                                        {mlResult.review_status === "pending_review" ? (
+                                                            <div className="border-t border-[#dce4de] bg-[#fbfcfb] p-5">
+                                                                <div className="mb-5">
+                                                                    <p className="text-[10px] font-extrabold tracking-[0.15em] text-[#087542]">
+                                                                        HUMAN VALIDATION
+                                                                    </p>
+                                                                    <p className="mt-2 text-[13px] leading-[1.7] text-[#718078]">
+                                                                        Validate the AI result without changing the original model output. Agree records acceptance; Correct records the human changes separately.
+                                                                    </p>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                                    <MlCorrectionInput
+                                                                        label="SIF level"
+                                                                        value={mlCorrections.sif_level || ""}
+                                                                        placeholder="Low / Medium / High"
+                                                                        onChange={(value) => updateMlCorrection("sif_level", value)}
+                                                                    />
+                                                                    <MlCorrectionInput
+                                                                        label="Barrier failure mode"
+                                                                        value={mlCorrections.barrier_failure_mode || ""}
+                                                                        placeholder="e.g. missing"
+                                                                        onChange={(value) => updateMlCorrection("barrier_failure_mode", value)}
+                                                                    />
+                                                                    <MlCorrectionInput
+                                                                        label="Barrier function"
+                                                                        value={mlCorrections.barrier_function || ""}
+                                                                        placeholder="e.g. prevention"
+                                                                        onChange={(value) => updateMlCorrection("barrier_function", value)}
+                                                                    />
+                                                                    <MlCorrectionInput
+                                                                        label="Activity"
+                                                                        value={mlCorrections.activity || ""}
+                                                                        placeholder="Corrected activity"
+                                                                        onChange={(value) => updateMlCorrection("activity", value)}
+                                                                    />
+                                                                    <MlCorrectionInput
+                                                                        label="Location"
+                                                                        value={mlCorrections.location || ""}
+                                                                        placeholder="Corrected location"
+                                                                        onChange={(value) => updateMlCorrection("location", value)}
+                                                                    />
+                                                                    <MlCorrectionInput
+                                                                        label="LSR tags"
+                                                                        value={Array.isArray(mlCorrections.lsr_tags) ? mlCorrections.lsr_tags.join(", ") : mlCorrections.lsr_tags || ""}
+                                                                        placeholder="Comma-separated tags"
+                                                                        onChange={(value) => updateMlCorrectionArray("lsr_tags", value)}
+                                                                    />
+                                                                </div>
+
+                                                                <div className="mt-5">
+                                                                    <label className="block text-[10px] font-extrabold tracking-[0.14em] text-[#718078]">
+                                                                        AI REVIEW NOTES
+                                                                    </label>
+                                                                    <textarea
+                                                                        value={mlCorrectionNotes}
+                                                                        onChange={(event) => setMlCorrectionNotes(event.target.value)}
+                                                                        rows={4}
+                                                                        disabled={mlReviewSubmitting}
+                                                                        placeholder="Explain why the AI result was accepted or corrected..."
+                                                                        className="mt-2 w-full resize-y rounded-[5px] border border-[#dce4de] bg-white px-4 py-3 text-[13px] leading-[1.6] outline-none focus:border-[#087542]"
+                                                                    />
+                                                                </div>
+
+                                                                {mlReviewError && (
+                                                                    <div className="mt-4 rounded-[5px] border border-[#f0cccc] bg-[#fff6f6] px-4 py-3 text-[12px] font-bold text-[#c62828]">
+                                                                        {mlReviewError}
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleMlReview("correct")}
+                                                                        disabled={mlReviewSubmitting}
+                                                                        className="rounded-[3px] border border-[#b9c9bf] bg-white px-6 py-3 text-[11px] font-extrabold tracking-[0.08em] text-[#34423a] hover:bg-[#f1f6f3] disabled:opacity-50"
+                                                                    >
+                                                                        {mlReviewSubmitting ? "SAVING..." : "CORRECT AI RESULT"}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleMlReview("agree")}
+                                                                        disabled={mlReviewSubmitting}
+                                                                        className="rounded-[3px] bg-[#087542] px-7 py-3 text-[11px] font-extrabold tracking-[0.08em] text-white hover:bg-[#065c38] disabled:opacity-50"
+                                                                    >
+                                                                        {mlReviewSubmitting ? "SAVING..." : "AGREE WITH AI"}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="border-t border-[#dce4de] bg-[#f7faf8] p-5">
+                                                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-extrabold tracking-[0.14em] text-[#087542]">
+                                                                            HUMAN REVIEW RECORDED
+                                                                        </p>
+                                                                        <p className="mt-2 text-[13px] text-[#46534b]">
+                                                                            {mlResult.review_status === "corrected"
+                                                                                ? "This AI result was corrected by a human reviewer."
+                                                                                : "This AI result was accepted by a human reviewer."}
+                                                                        </p>
+                                                                    </div>
+                                                                    {mlResult.reviewed_at && (
+                                                                        <span className="text-[11px] font-semibold text-[#718078]">
+                                                                            {new Date(mlResult.reviewed_at).toLocaleString("en-IN")}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                {mlResult.correction_notes && (
+                                                                    <div className="mt-4 rounded-[4px] border border-[#dce4de] bg-white p-4">
+                                                                        <p className="text-[9px] font-extrabold tracking-[0.13em] text-[#718078]">
+                                                                            REVIEW NOTES
+                                                                        </p>
+                                                                        <p className="mt-2 text-[13px] leading-[1.6] text-[#46534b]">
+                                                                            {mlResult.correction_notes}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+
+                                                                {mlResult.human_corrections && (
+                                                                    <div className="mt-4 rounded-[4px] border border-[#dce4de] bg-white p-4">
+                                                                        <p className="text-[9px] font-extrabold tracking-[0.13em] text-[#718078]">
+                                                                            HUMAN CORRECTIONS
+                                                                        </p>
+                                                                        <pre className="mt-2 overflow-x-auto text-[11px] leading-[1.6] text-[#46534b]">
+                                                                            {JSON.stringify(mlResult.human_corrections, null, 2)}
+                                                                        </pre>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {mlReviewMessage && (
+                                                            <div className="border-t border-[#cfe4d6] bg-[#eef8f1] px-5 py-4 text-[12px] font-bold text-[#087542]">
+                                                                {mlReviewMessage}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="rounded-[5px] border border-[#dce4de] bg-[#f8faf9] px-5 py-5 text-[13px] text-[#718078]">
+                                                        {mlReviewError || "No AI analysis is available for this report yet."}
+                                                    </div>
+                                                )}
+                                            </section>
+
+
+                                            {/* =================================================
                                                 ACTUAL OUTCOME
                                             ================================================= */}
 
@@ -2382,6 +2796,113 @@ function AdminReview() {
                 </div>
             )}
 
+        </div>
+    );
+}
+
+
+/* =============================================================
+   AI REVIEW HELPERS
+============================================================= */
+
+function MlSummary({ label, value }) {
+    return (
+        <div className="border-b border-[#e3e9e5] px-4 py-4 sm:border-r last:border-r-0">
+            <span className="block text-[9px] font-extrabold tracking-[0.12em] text-[#718078]">
+                {label}
+            </span>
+            <span className="mt-2 block break-words text-[12px] font-extrabold text-[#34423a]">
+                {value || "—"}
+            </span>
+        </div>
+    );
+}
+
+function MlDetail({ label, value }) {
+    const normalized =
+        value === null || value === undefined
+            ? ""
+            : Array.isArray(value)
+                ? value.join(", ")
+                : String(value);
+
+    if (
+        !normalized.trim() ||
+        normalized.trim().toUpperCase() === "NOT_STATED"
+    ) {
+        return null;
+    }
+
+    return (
+        <div className="bg-white px-4 py-4">
+            <span className="block text-[9px] font-extrabold tracking-[0.11em] text-[#718078]">
+                {label}
+            </span>
+            <span className="mt-2 block break-words text-[12px] font-semibold leading-[1.5] text-[#46534b]">
+                {normalized}
+            </span>
+        </div>
+    );
+}
+
+function MlTagList({ label, values, highlighted = false }) {
+    const list = Array.isArray(values)
+        ? values.filter(
+            (value) =>
+                value !== null &&
+                value !== undefined &&
+                String(value).trim() !== "" &&
+                String(value).trim().toUpperCase() !== "NOT_STATED"
+        )
+        : [];
+
+    return (
+        <div>
+            <span className="block text-[9px] font-extrabold tracking-[0.13em] text-[#718078]">
+                {label}
+            </span>
+
+            {list.length === 0 ? (
+                <p className="mt-3 text-[12px] text-[#9aa59f]">
+                    None recorded.
+                </p>
+            ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {list.map((value, index) => (
+                        <span
+                            key={`${value}-${index}`}
+                            className={
+                                highlighted
+                                    ? "rounded-[4px] border border-[#cfe2d5] bg-[#eef8f1] px-3 py-2 text-[11px] font-bold text-[#087542]"
+                                    : "rounded-[4px] bg-[#f4f7f5] px-3 py-2 text-[11px] font-semibold text-[#46534b]"
+                            }
+                        >
+                            {value}
+                        </span>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MlCorrectionInput({
+    label,
+    value,
+    placeholder,
+    onChange,
+}) {
+    return (
+        <div>
+            <label className="block text-[9px] font-extrabold tracking-[0.13em] text-[#718078]">
+                {label}
+            </label>
+            <input
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                placeholder={placeholder}
+                className="mt-2 w-full rounded-[4px] border border-[#dce4de] bg-white px-4 py-3 text-[12px] text-[#34423a] outline-none focus:border-[#087542]"
+            />
         </div>
     );
 }

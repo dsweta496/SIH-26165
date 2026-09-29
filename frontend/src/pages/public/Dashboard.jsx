@@ -9,6 +9,12 @@ import {
     getDistressRanking,
 } from "../../api/dashboard.api";
 
+import {
+    getMLMetrics,
+    getMLClusters,
+    getMLSites,
+} from "../../api/ml.api";
+
 const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
     "http://localhost:5000/api";
@@ -31,6 +37,13 @@ function Dashboard() {
         cases_solved_this_month: 0,
         total_incidents_this_year: 0,
     });
+
+    /* ---------------- ML INTELLIGENCE ---------------- */
+
+    const [mlMetrics, setMLMetrics] = useState(null);
+    const [mlClusters, setMLClusters] = useState([]);
+    const [mlSites, setMLSites] = useState([]);
+    const [mlLoading, setMLLoading] = useState(true);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -123,6 +136,91 @@ function Dashboard() {
         };
 
         loadDashboard();
+    }, []);
+
+    /* =========================================================
+       ML INTELLIGENCE DATA
+
+       ML loading is deliberately isolated from the main
+       dashboard request so an ML endpoint failure never
+       breaks the existing dashboard.
+    ========================================================= */
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadMLIntelligence = async () => {
+            try {
+                setMLLoading(true);
+
+                const results = await Promise.allSettled([
+                    getMLMetrics(),
+                    getMLClusters(),
+                    getMLSites(),
+                ]);
+
+                if (cancelled) {
+                    return;
+                }
+
+                const [
+                    metricsResult,
+                    clustersResult,
+                    sitesResult,
+                ] = results;
+
+                if (
+                    metricsResult.status ===
+                    "fulfilled"
+                ) {
+                    setMLMetrics(
+                        metricsResult.value?.data ||
+                        null
+                    );
+                }
+
+                if (
+                    clustersResult.status ===
+                    "fulfilled"
+                ) {
+                    setMLClusters(
+                        Array.isArray(
+                            clustersResult.value?.data
+                        )
+                            ? clustersResult.value.data
+                            : []
+                    );
+                }
+
+                if (
+                    sitesResult.status ===
+                    "fulfilled"
+                ) {
+                    setMLSites(
+                        Array.isArray(
+                            sitesResult.value?.data
+                        )
+                            ? sitesResult.value.data
+                            : []
+                    );
+                }
+            } catch (err) {
+                console.error(
+                    "ML intelligence loading error:",
+                    err
+                );
+            } finally {
+                if (!cancelled) {
+                    setMLLoading(false);
+                }
+            }
+        };
+
+        loadMLIntelligence();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     /* =========================================================
@@ -318,6 +416,85 @@ function Dashboard() {
 
     const highestPriority =
         ranking?.[0]?.sif_score ?? "—";
+
+    /* ---------------- ML DERIVED DATA ---------------- */
+
+    const mlModelName =
+        mlMetrics?.model?.name || "MuRIL";
+
+    const mlModelVersion =
+        mlMetrics?.model?.version ||
+        "NOT_AVAILABLE";
+
+    const mlTotalResults =
+        mlMetrics?.result_statistics
+            ?.total_results ?? 0;
+
+    const mlReviewedResults =
+        mlMetrics?.result_statistics
+            ?.reviewed_results ?? 0;
+
+    const mlCorrectedResults =
+        mlMetrics?.result_statistics
+            ?.corrected_results ?? 0;
+
+    const activeMLClusters =
+        mlClusters.filter(
+            (cluster) =>
+                cluster?.cluster_id &&
+                String(
+                    cluster.cluster_id
+                ).trim() !== "null"
+        );
+
+    const topMLClusters =
+        activeMLClusters.slice(0, 3);
+
+    const totalHighSIF =
+        mlSites.reduce(
+            (total, site) =>
+                total +
+                Number(
+                    site?.high_sif_count || 0
+                ),
+            0
+        );
+
+    const totalCriticalBarriers =
+        mlSites.reduce(
+            (total, site) =>
+                total +
+                Number(
+                    site?.critical_barrier_count ||
+                    0
+                ),
+            0
+        );
+
+    const sitesWithSBRI =
+        mlSites.filter(
+            (site) =>
+                Number.isFinite(
+                    Number(site?.average_sbri)
+                )
+        );
+
+    const averageSBRI =
+        sitesWithSBRI.length > 0
+            ? Math.round(
+                (
+                    sitesWithSBRI.reduce(
+                        (total, site) =>
+                            total +
+                            Number(
+                                site.average_sbri
+                            ),
+                        0
+                    ) /
+                    sitesWithSBRI.length
+                ) * 100
+            )
+            : null;
 
     /* =========================================================
        RENDER
@@ -1152,6 +1329,944 @@ function Dashboard() {
                         )}
 
                     </div>
+                </section>
+
+
+                {/* =================================================
+                    AI SAFETY INTELLIGENCE
+                ================================================= */}
+
+                <section
+                    id="ml-intelligence"
+                    className="
+                        w-[90%]
+                        max-w-[1380px]
+
+                        mx-auto
+
+                        pb-[35px]
+                    "
+                >
+
+                    <div
+                        className="
+                            overflow-hidden
+
+                            rounded-[6px]
+
+                            border
+                            border-[#d9e2dc]
+
+                            bg-white
+
+                            shadow-[0_8px_25px_rgba(20,50,35,0.055)]
+                        "
+                    >
+
+                        <div
+                            className="
+                                px-7
+                                py-6
+
+                                border-b
+                                border-[#dce5df]
+
+                                bg-[#f7faf8]
+                            "
+                        >
+
+                            <div
+                                className="
+                                    flex
+                                    flex-col
+                                    gap-4
+
+                                    lg:flex-row
+                                    lg:items-end
+                                    lg:justify-between
+                                "
+                            >
+
+                                <div>
+
+                                    <div
+                                        className="
+                                            mb-[9px]
+
+                                            text-[#087542]
+
+                                            text-[9px]
+                                            font-extrabold
+
+                                            tracking-[0.18em]
+                                        "
+                                    >
+                                        AI SAFETY INTELLIGENCE
+                                    </div>
+
+                                    <h2
+                                        className="
+                                            text-[#17211b]
+
+                                            text-[clamp(28px,3vw,40px)]
+                                            leading-none
+
+                                            font-extrabold
+
+                                            tracking-[-0.05em]
+                                        "
+                                    >
+                                        What the model is seeing
+                                    </h2>
+
+                                    <p
+                                        className="
+                                            max-w-[650px]
+
+                                            mt-3
+
+                                            text-[#718078]
+
+                                            text-[12px]
+                                            leading-[1.65]
+                                        "
+                                    >
+                                        Model-derived signals from stored
+                                        safety analyses, precursor clusters
+                                        and site-level aggregates.
+                                    </p>
+
+                                </div>
+
+                                <div
+                                    className="
+                                        flex
+                                        flex-wrap
+                                        items-center
+                                        gap-2
+                                    "
+                                >
+
+                                    <span
+                                        className="
+                                            inline-flex
+                                            items-center
+
+                                            px-3
+                                            py-[6px]
+
+                                            rounded-full
+
+                                            border
+                                            border-[#dce5df]
+
+                                            bg-white
+
+                                            text-[#536159]
+
+                                            text-[9px]
+                                            font-extrabold
+
+                                            tracking-[0.08em]
+                                        "
+                                    >
+                                        {mlModelName}
+                                    </span>
+
+                                    <span
+                                        className="
+                                            inline-flex
+                                            items-center
+
+                                            px-3
+                                            py-[6px]
+
+                                            rounded-full
+
+                                            border
+                                            border-[#cce6d7]
+
+                                            bg-[#eaf5ee]
+
+                                            text-[#087542]
+
+                                            text-[9px]
+                                            font-extrabold
+
+                                            tracking-[0.08em]
+                                        "
+                                    >
+                                        {mlModelVersion}
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div className="p-7">
+
+                            {mlLoading ? (
+
+                                <div
+                                    className="
+                                        py-8
+
+                                        flex
+                                        items-center
+                                        justify-center
+
+                                        text-[#718078]
+
+                                        text-[12px]
+                                        font-medium
+                                    "
+                                >
+                                    Loading AI safety signals...
+                                </div>
+
+                            ) : (
+
+                                <>
+
+                                    {/* ML summary cards */}
+
+                                    <div
+                                        className="
+                                            grid
+                                            grid-cols-1
+
+                                            gap-3
+
+                                            sm:grid-cols-2
+                                            lg:grid-cols-5
+                                        "
+                                    >
+
+                                        <div
+                                            className="
+                                                p-4
+
+                                                rounded-[5px]
+
+                                                border
+                                                border-[#dce5df]
+
+                                                bg-[#f7faf8]
+                                            "
+                                        >
+                                            <span
+                                                className="
+                                                    block
+
+                                                    text-[#718078]
+
+                                                    text-[9px]
+                                                    font-extrabold
+
+                                                    tracking-[0.1em]
+                                                "
+                                            >
+                                                ML ANALYSES
+                                            </span>
+
+                                            <strong
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#17211b]
+
+                                                    text-[27px]
+                                                    leading-none
+
+                                                    font-extrabold
+
+                                                    tracking-[-0.04em]
+                                                "
+                                            >
+                                                {mlTotalResults}
+                                            </strong>
+
+                                            <span
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#8a958e]
+
+                                                    text-[10px]
+                                                "
+                                            >
+                                                Stored results
+                                            </span>
+                                        </div>
+
+
+                                        <div
+                                            className="
+                                                p-4
+
+                                                rounded-[5px]
+
+                                                border
+                                                border-[#dce5df]
+
+                                                bg-[#f7faf8]
+                                            "
+                                        >
+                                            <span
+                                                className="
+                                                    block
+
+                                                    text-[#718078]
+
+                                                    text-[9px]
+                                                    font-extrabold
+
+                                                    tracking-[0.1em]
+                                                "
+                                            >
+                                                HIGH SIF
+                                            </span>
+
+                                            <strong
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#c62828]
+
+                                                    text-[27px]
+                                                    leading-none
+
+                                                    font-extrabold
+
+                                                    tracking-[-0.04em]
+                                                "
+                                            >
+                                                {totalHighSIF}
+                                            </strong>
+
+                                            <span
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#8a958e]
+
+                                                    text-[10px]
+                                                "
+                                            >
+                                                Site-level count
+                                            </span>
+                                        </div>
+
+
+                                        <div
+                                            className="
+                                                p-4
+
+                                                rounded-[5px]
+
+                                                border
+                                                border-[#dce5df]
+
+                                                bg-[#f7faf8]
+                                            "
+                                        >
+                                            <span
+                                                className="
+                                                    block
+
+                                                    text-[#718078]
+
+                                                    text-[9px]
+                                                    font-extrabold
+
+                                                    tracking-[0.1em]
+                                                "
+                                            >
+                                                AVG SBRI
+                                            </span>
+
+                                            <strong
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#17211b]
+
+                                                    text-[27px]
+                                                    leading-none
+
+                                                    font-extrabold
+
+                                                    tracking-[-0.04em]
+                                                "
+                                            >
+                                                {averageSBRI ===
+                                                null
+                                                    ? "—"
+                                                    : `${averageSBRI}/100`}
+                                            </strong>
+
+                                            <span
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#8a958e]
+
+                                                    text-[10px]
+                                                "
+                                            >
+                                                Across available sites
+                                            </span>
+                                        </div>
+
+
+                                        <div
+                                            className="
+                                                p-4
+
+                                                rounded-[5px]
+
+                                                border
+                                                border-[#dce5df]
+
+                                                bg-[#f7faf8]
+                                            "
+                                        >
+                                            <span
+                                                className="
+                                                    block
+
+                                                    text-[#718078]
+
+                                                    text-[9px]
+                                                    font-extrabold
+
+                                                    tracking-[0.1em]
+                                                "
+                                            >
+                                                ACTIVE CLUSTERS
+                                            </span>
+
+                                            <strong
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#087542]
+
+                                                    text-[27px]
+                                                    leading-none
+
+                                                    font-extrabold
+
+                                                    tracking-[-0.04em]
+                                                "
+                                            >
+                                                {activeMLClusters.length}
+                                            </strong>
+
+                                            <span
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#8a958e]
+
+                                                    text-[10px]
+                                                "
+                                            >
+                                                Recurring precursor groups
+                                            </span>
+                                        </div>
+
+
+                                        <div
+                                            className="
+                                                p-4
+
+                                                rounded-[5px]
+
+                                                border
+                                                border-[#dce5df]
+
+                                                bg-[#f7faf8]
+                                            "
+                                        >
+                                            <span
+                                                className="
+                                                    block
+
+                                                    text-[#718078]
+
+                                                    text-[9px]
+                                                    font-extrabold
+
+                                                    tracking-[0.1em]
+                                                "
+                                            >
+                                                CRITICAL BARRIERS
+                                            </span>
+
+                                            <strong
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#996300]
+
+                                                    text-[27px]
+                                                    leading-none
+
+                                                    font-extrabold
+
+                                                    tracking-[-0.04em]
+                                                "
+                                            >
+                                                {totalCriticalBarriers}
+                                            </strong>
+
+                                            <span
+                                                className="
+                                                    block
+
+                                                    mt-2
+
+                                                    text-[#8a958e]
+
+                                                    text-[10px]
+                                                "
+                                            >
+                                                Site-level count
+                                            </span>
+                                        </div>
+
+                                    </div>
+
+
+                                    {/* Review status + precursor signals */}
+
+                                    <div
+                                        className="
+                                            grid
+                                            grid-cols-1
+
+                                            gap-5
+
+                                            mt-5
+
+                                            lg:grid-cols-[0.8fr_1.2fr]
+                                        "
+                                    >
+
+                                        <div
+                                            className="
+                                                p-5
+
+                                                rounded-[5px]
+
+                                                border
+                                                border-[#dce5df]
+
+                                                bg-white
+                                            "
+                                        >
+
+                                            <div
+                                                className="
+                                                    flex
+                                                    items-center
+                                                    justify-between
+                                                    gap-4
+                                                "
+                                            >
+
+                                                <div>
+
+                                                    <span
+                                                        className="
+                                                            block
+
+                                                            text-[#718078]
+
+                                                            text-[9px]
+                                                            font-extrabold
+
+                                                            tracking-[0.12em]
+                                                        "
+                                                    >
+                                                        HUMAN REVIEW
+                                                    </span>
+
+                                                    <h3
+                                                        className="
+                                                            mt-2
+
+                                                            text-[#17211b]
+
+                                                            text-[15px]
+                                                            font-extrabold
+                                                        "
+                                                    >
+                                                        Model review coverage
+                                                    </h3>
+
+                                                </div>
+
+                                                <span
+                                                    className="
+                                                        text-[#087542]
+
+                                                        text-[25px]
+                                                        font-extrabold
+                                                    "
+                                                >
+                                                    {mlTotalResults > 0
+                                                        ? Math.round(
+                                                            (mlReviewedResults /
+                                                                mlTotalResults) *
+                                                            100
+                                                        )
+                                                        : 0}
+                                                    %
+                                                </span>
+
+                                            </div>
+
+
+                                            <div
+                                                className="
+                                                    mt-5
+
+                                                    h-[7px]
+
+                                                    overflow-hidden
+
+                                                    rounded-full
+
+                                                    bg-[#edf2ee]
+                                                "
+                                            >
+                                                <div
+                                                    className="
+                                                        h-full
+
+                                                        rounded-full
+
+                                                        bg-[#087542]
+
+                                                        transition-all
+                                                    "
+                                                    style={{
+                                                        width: `${
+                                                            mlTotalResults >
+                                                            0
+                                                                ? Math.min(
+                                                                    100,
+                                                                    Math.round(
+                                                                        (mlReviewedResults /
+                                                                            mlTotalResults) *
+                                                                        100
+                                                                    )
+                                                                )
+                                                                : 0
+                                                        }%`,
+                                                    }}
+                                                />
+                                            </div>
+
+
+                                            <div
+                                                className="
+                                                    flex
+                                                    items-center
+                                                    justify-between
+
+                                                    mt-3
+                                                "
+                                            >
+                                                <span
+                                                    className="
+                                                        text-[#718078]
+
+                                                        text-[10px]
+                                                    "
+                                                >
+                                                    {mlReviewedResults} reviewed
+                                                </span>
+
+                                                <span
+                                                    className="
+                                                        text-[#718078]
+
+                                                        text-[10px]
+                                                    "
+                                                >
+                                                    {mlCorrectedResults} corrected
+                                                </span>
+                                            </div>
+
+                                        </div>
+
+
+                                        <div
+                                            className="
+                                                p-5
+
+                                                rounded-[5px]
+
+                                                border
+                                                border-[#dce5df]
+
+                                                bg-white
+                                            "
+                                        >
+
+                                            <div
+                                                className="
+                                                    flex
+                                                    items-center
+                                                    justify-between
+                                                    gap-4
+
+                                                    mb-4
+                                                "
+                                            >
+
+                                                <div>
+
+                                                    <span
+                                                        className="
+                                                            block
+
+                                                            text-[#718078]
+
+                                                            text-[9px]
+                                                            font-extrabold
+
+                                                            tracking-[0.12em]
+                                                        "
+                                                    >
+                                                        PATTERN DISCOVERY
+                                                    </span>
+
+                                                    <h3
+                                                        className="
+                                                            mt-2
+
+                                                            text-[#17211b]
+
+                                                            text-[15px]
+                                                            font-extrabold
+                                                        "
+                                                    >
+                                                        Emerging precursor signals
+                                                    </h3>
+
+                                                </div>
+
+                                                <span
+                                                    className="
+                                                        text-[#087542]
+
+                                                        text-[18px]
+                                                    "
+                                                >
+                                                    →
+                                                </span>
+
+                                            </div>
+
+
+                                            {topMLClusters.length ===
+                                            0 ? (
+
+                                                <div
+                                                    className="
+                                                        py-4
+
+                                                        text-[#8a958e]
+
+                                                        text-[11px]
+                                                    "
+                                                >
+                                                    No precursor clusters are
+                                                    available yet.
+                                                </div>
+
+                                            ) : (
+
+                                                <div className="space-y-2">
+
+                                                    {topMLClusters.map(
+                                                        (
+                                                            cluster,
+                                                            index
+                                                        ) => (
+
+                                                            <div
+                                                                key={
+                                                                    cluster.cluster_id ||
+                                                                    index
+                                                                }
+                                                                className="
+                                                                    grid
+                                                                    grid-cols-[28px_1fr_auto]
+                                                                    items-center
+                                                                    gap-3
+
+                                                                    p-3
+
+                                                                    rounded-[5px]
+
+                                                                    border
+                                                                    border-[#e6ece8]
+
+                                                                    bg-[#f7faf8]
+                                                                "
+                                                            >
+
+                                                                <span
+                                                                    className="
+                                                                        text-[#087542]
+
+                                                                        text-[11px]
+                                                                        font-extrabold
+                                                                    "
+                                                                >
+                                                                    {String(
+                                                                        index +
+                                                                        1
+                                                                    ).padStart(
+                                                                        2,
+                                                                        "0"
+                                                                    )}
+                                                                </span>
+
+
+                                                                <div className="min-w-0">
+
+                                                                    <p
+                                                                        className="
+                                                                            truncate
+
+                                                                            text-[#33423a]
+
+                                                                            text-[11px]
+                                                                            font-extrabold
+                                                                        "
+                                                                    >
+                                                                        {cluster.cluster_id}
+                                                                    </p>
+
+                                                                    <p
+                                                                        className="
+                                                                            mt-1
+
+                                                                            text-[#8a958e]
+
+                                                                            text-[9px]
+                                                                        "
+                                                                    >
+                                                                        {cluster.report_count ??
+                                                                            0}{" "}
+                                                                        reports ·{" "}
+                                                                        {cluster.unique_sites ??
+                                                                            0}{" "}
+                                                                        sites
+                                                                    </p>
+
+                                                                </div>
+
+
+                                                                <div
+                                                                    className="
+                                                                        text-right
+                                                                    "
+                                                                >
+
+                                                                    <strong
+                                                                        className="
+                                                                            block
+
+                                                                            text-[#17211b]
+
+                                                                            text-[12px]
+                                                                            font-extrabold
+                                                                        "
+                                                                    >
+                                                                        {cluster.sbri_score !==
+                                                                        null &&
+                                                                        cluster.sbri_score !==
+                                                                        undefined
+                                                                            ? `${Math.round(
+                                                                                Number(
+                                                                                    cluster.sbri_score
+                                                                                ) *
+                                                                                100
+                                                                            )}/100`
+                                                                            : "—"}
+                                                                    </strong>
+
+                                                                    <span
+                                                                        className="
+                                                                            block
+
+                                                                            mt-1
+
+                                                                            text-[#718078]
+
+                                                                            text-[9px]
+                                                                        "
+                                                                    >
+                                                                        {cluster.trend &&
+                                                                            String(
+                                                                                cluster.trend
+                                                                            ).toUpperCase() !==
+                                                                            "NOT_STATED"
+                                                                            ? cluster.trend
+                                                                            : "Trend unavailable"}
+                                                                    </span>
+
+                                                                </div>
+
+                                                            </div>
+
+                                                        )
+                                                    )}
+
+                                                </div>
+
+                                            )}
+
+                                        </div>
+
+                                    </div>
+
+                                </>
+
+                            )}
+
+                        </div>
+
+                    </div>
+
                 </section>
 
 
@@ -2242,775 +3357,616 @@ function Dashboard() {
 
             {/* CASE DETAILS MODAL */}
 
-            {/* CASE DETAILS MODAL */}
-
-            {selectedCase &&
-                (() => {
-                    const hasValue = (value) => {
-                        if (value === null || value === undefined) {
-                            return false;
+            {selectedCase && (
+                <div
+                    className="
+            fixed
+            inset-0
+            z-[100]
+            flex
+            items-center
+            justify-center
+            bg-[#17211b]/55
+            px-5
+            py-8
+        "
+                    onClick={() => setSelectedCase(null)}
+                >
+                    <div
+                        className="
+                w-full
+                max-w-[760px]
+                max-h-[90vh]
+                overflow-y-auto
+                rounded-[6px]
+                border
+                border-[#d9e2dc]
+                bg-white
+                shadow-[0_30px_90px_rgba(20,50,35,0.22)]
+            "
+                        onClick={(event) =>
+                            event.stopPropagation()
                         }
+                    >
+                        {/* Header */}
 
-                        if (Array.isArray(value)) {
-                            return (
-                                value.length > 0 &&
-                                value.some(
-                                    (item) =>
-                                        item !== null &&
-                                        item !== undefined &&
-                                        String(item).trim() !== "" &&
-                                        String(item).trim().toUpperCase() !==
-                                        "NOT_STATED"
-                                )
-                            );
-                        }
-
-                        const normalized = String(value).trim();
-
-                        return (
-                            normalized !== "" &&
-                            normalized.toUpperCase() !== "NOT_STATED"
-                        );
-                    };
-
-                    const displayValue = (value) => {
-                        if (Array.isArray(value)) {
-                            return value.join(", ");
-                        }
-
-                        return value;
-                    };
-
-                    const formatDate = (date) => {
-                        if (!date) return "";
-
-                        return new Date(date).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                        });
-                    };
-
-                    const renderTable = (fields) => {
-                        const visibleFields = fields.filter(([, value]) =>
-                            hasValue(value)
-                        );
-
-                        if (!visibleFields.length) {
-                            return null;
-                        }
-
-                        return (
-                            <div className="border border-[#dce5df] rounded-[4px] overflow-hidden">
-                                {visibleFields.map(
-                                    ([label, value], index) => (
-                                        <div
-                                            key={label}
-                                            className={`
-                                                grid
-                                                grid-cols-1
-                                                sm:grid-cols-[220px_1fr]
-                                                ${index !==
-                                                    visibleFields.length - 1
-                                                    ? "border-b border-[#e3e9e5]"
-                                                    : ""
-                                                }
-                                            `}
-                                        >
-                                            <div
-                                                className="
-                                                    px-4
-                                                    py-3.5
-                                                    bg-[#f7faf8]
-                                                    text-[#718078]
-                                                    text-[9px]
-                                                    font-extrabold
-                                                    tracking-[0.11em]
-                                                "
-                                            >
-                                                {label}
-                                            </div>
-
-                                            <div
-                                                className="
-                                                    px-4
-                                                    py-3.5
-                                                    bg-white
-                                                    text-[#46534b]
-                                                    text-[13px]
-                                                    font-semibold
-                                                    leading-[1.6]
-                                                    break-words
-                                                "
-                                            >
-                                                {displayValue(value)}
-                                            </div>
-                                        </div>
-                                    )
-                                )}
-                            </div>
-                        );
-                    };
-
-                    return (
                         <div
                             className="
-                                fixed
-                                inset-0
-                                z-[100]
-                                flex
-                                items-center
-                                justify-center
-                                bg-[#17211b]/55
-                                px-5
-                                py-8
-                            "
-                            onClick={() => setSelectedCase(null)}
+                    flex
+                    items-start
+                    justify-between
+                    gap-6
+                    px-7
+                    py-6
+                    border-b
+                    border-[#e3e9e5]
+                "
                         >
+                            <div>
+                                <span
+                                    className="
+                            block
+                            mb-2
+                            text-[#087542]
+                            text-[9px]
+                            font-extrabold
+                            tracking-[0.18em]
+                        "
+                                >
+                                    SAFETY CASE
+                                </span>
+
+                                <h2
+                                    className="
+                            text-[#17211b]
+                            text-[28px]
+                            font-extrabold
+                            tracking-[-0.04em]
+                        "
+                                >
+                                    {selectedCase.activity ||
+                                        "Safety incident"}
+                                </h2>
+
+                                <p
+                                    className="
+                            mt-2
+                            text-[#8a958e]
+                            text-[11px]
+                        "
+                                >
+                                    {selectedCase.report_id}
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setSelectedCase(null)
+                                }
+                                className="
+                        w-10
+                        h-10
+                        shrink-0
+                        flex
+                        items-center
+                        justify-center
+                        rounded-full
+                        border
+                        border-[#dce5df]
+                        bg-white
+                        text-[#718078]
+                        text-[18px]
+                        cursor-pointer
+                        transition
+                        hover:bg-[#f5f8f6]
+                        hover:text-[#17211b]
+                    "
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {/* Case information */}
+
+                        <div className="px-7 py-7">
+
+                            {/* Status summary */}
+
                             <div
                                 className="
-                                    w-full
-                                    max-w-[820px]
-                                    max-h-[90vh]
-                                    overflow-y-auto
-                                    rounded-[6px]
-                                    border
-                                    border-[#d9e2dc]
-                                    bg-white
-                                    shadow-[0_30px_90px_rgba(20,50,35,0.22)]
-                                "
-                                onClick={(event) =>
-                                    event.stopPropagation()
-                                }
+                        grid
+                        grid-cols-1
+                        gap-4
+                        sm:grid-cols-3
+                    "
                             >
-                                {/* Header */}
+                                {[
+                                    [
+                                        "REPORT TYPE",
+                                        selectedCase.report_type,
+                                    ],
+                                    [
+                                        "REPORT DATE",
+                                        selectedCase.report_date
+                                            ? new Date(
+                                                selectedCase.report_date
+                                            ).toLocaleDateString(
+                                                "en-IN",
+                                                {
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                    year: "numeric",
+                                                }
+                                            )
+                                            : "",
+                                    ],
+                                    [
+                                        "STATUS",
+                                        selectedCase.case_status,
+                                    ],
+                                ]
+                                    .filter(
+                                        ([, value]) =>
+                                            value !== null &&
+                                            value !== undefined &&
+                                            String(value).trim() !== ""
+                                    )
+                                    .map(([label, value]) => (
+                                        <div
+                                            key={label}
+                                            className="
+                                    p-5
+                                    rounded-[5px]
+                                    border
+                                    border-[#dce5df]
+                                    bg-[#f7faf8]
+                                "
+                                        >
+                                            <span
+                                                className="
+                                        block
+                                        mb-2
+                                        text-[#718078]
+                                        text-[9px]
+                                        font-extrabold
+                                        tracking-[0.12em]
+                                    "
+                                            >
+                                                {label}
+                                            </span>
+
+                                            <strong
+                                                className="
+                                        text-[#17211b]
+                                        text-[14px]
+                                        font-bold
+                                    "
+                                            >
+                                                {Array.isArray(value)
+                                                    ? value.join(", ")
+                                                    : value}
+                                            </strong>
+                                        </div>
+                                    ))}
+                            </div>
+
+                            {/* Submitted report fields */}
+
+                            <div className="mt-7">
+
+                                <span
+                                    className="
+                            block
+                            mb-3
+                            text-[#718078]
+                            text-[9px]
+                            font-extrabold
+                            tracking-[0.13em]
+                        "
+                                >
+                                    INCIDENT INFORMATION
+                                </span>
 
                                 <div
                                     className="
-                                        flex
-                                        items-start
-                                        justify-between
-                                        gap-6
-                                        px-7
-                                        py-6
-                                        border-b
-                                        border-[#e3e9e5]
-                                    "
+                            grid
+                            grid-cols-1
+                            gap-4
+                            sm:grid-cols-2
+                        "
                                 >
-                                    <div className="min-w-0">
-                                        <span
-                                            className="
-                                                block
-                                                mb-2
-                                                text-[#087542]
-                                                text-[9px]
-                                                font-extrabold
-                                                tracking-[0.18em]
-                                            "
-                                        >
-                                            SAFETY CASE
-                                        </span>
+                                    {[
+                                        ["SITE", selectedCase.site],
+                                        [
+                                            "LOCATION",
+                                            selectedCase.location,
+                                        ],
+                                        [
+                                            "ACTIVITY",
+                                            selectedCase.activity,
+                                        ],
+                                        [
+                                            "EQUIPMENT",
+                                            selectedCase.equipment,
+                                        ],
+                                        [
+                                            "LANGUAGE STYLE",
+                                            selectedCase.language_style,
+                                        ],
+                                        [
+                                            "HAZARD",
+                                            selectedCase.hazard,
+                                        ],
+                                        [
+                                            "ENERGY SOURCE",
+                                            selectedCase.energy_source,
+                                        ],
+                                        [
+                                            "EXPOSURE",
+                                            selectedCase.exposure,
+                                        ],
+                                        [
+                                            "UNSAFE ACT / CONDITION",
+                                            selectedCase.unsafe_act_condition,
+                                        ],
+                                        [
+                                            "BARRIER / CONTROL",
+                                            selectedCase.barrier_or_control,
+                                        ],
+                                        [
+                                            "BARRIER FAILURE MODE",
+                                            selectedCase.barrier_failure_mode,
+                                        ],
+                                        [
+                                            "BARRIER FUNCTION",
+                                            selectedCase.barrier_function,
+                                        ],
+                                        [
+                                            "POTENTIAL CONSEQUENCE",
+                                            selectedCase.potential_consequence,
+                                        ],
+                                        [
+                                            "ACTUAL OUTCOME",
+                                            selectedCase.actual_outcome,
+                                        ],
+                                        [
+                                            "IMMEDIATE ACTION",
+                                            selectedCase.immediate_action,
+                                        ],
+                                    ]
+                                        .filter(([, value]) => {
+                                            if (
+                                                value === null ||
+                                                value === undefined
+                                            ) {
+                                                return false;
+                                            }
 
-                                        <h2
-                                            className="
-                                                text-[#17211b]
-                                                text-[28px]
-                                                font-extrabold
-                                                tracking-[-0.04em]
-                                                break-words
-                                            "
-                                        >
-                                            {selectedCase.activity ||
-                                                "Safety incident"}
-                                        </h2>
+                                            if (Array.isArray(value)) {
+                                                return (
+                                                    value.length > 0 &&
+                                                    value.some(
+                                                        (item) =>
+                                                            item !== null &&
+                                                            item !== undefined &&
+                                                            String(item).trim() !== "" &&
+                                                            String(item).trim().toUpperCase() !==
+                                                            "NOT_STATED"
+                                                    )
+                                                );
+                                            }
 
-                                        <p
-                                            className="
-                                                mt-2
-                                                text-[#8a958e]
-                                                text-[11px]
-                                            "
-                                        >
-                                            {selectedCase.report_id}
-                                        </p>
-                                    </div>
+                                            const normalizedValue = String(value).trim();
 
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setSelectedCase(null)
-                                        }
-                                        className="
-                                            w-10
-                                            h-10
-                                            shrink-0
-                                            flex
-                                            items-center
-                                            justify-center
-                                            rounded-full
+                                            return (
+                                                normalizedValue !== "" &&
+                                                normalizedValue.toUpperCase() !== "NOT_STATED"
+                                            );
+                                        })
+                                        .map(
+                                            ([label, value]) => (
+                                                <div
+                                                    key={label}
+                                                    className="
+                                            p-4
+                                            rounded-[5px]
                                             border
                                             border-[#dce5df]
-                                            bg-white
-                                            text-[#718078]
-                                            text-[18px]
-                                            cursor-pointer
-                                            transition
-                                            hover:bg-[#f5f8f6]
-                                            hover:text-[#17211b]
+                                            bg-[#f7faf8]
                                         "
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-
-                                {/* Case Information */}
-
-                                <div className="px-7 py-7">
-
-                                    {/* CASE OVERVIEW */}
-
-                                    <section>
-                                        <div className="mb-3">
-                                            <span
-                                                className="
-                                                    block
-                                                    text-[#718078]
-                                                    text-[9px]
-                                                    font-extrabold
-                                                    tracking-[0.13em]
-                                                "
-                                            >
-                                                CASE OVERVIEW
-                                            </span>
-
-                                            <div className="mt-1 h-px bg-[#e3e9e5]" />
-                                        </div>
-
-                                        {renderTable([
-                                            [
-                                                "REPORT TYPE",
-                                                selectedCase.report_type,
-                                            ],
-                                            [
-                                                "REPORT DATE",
-                                                formatDate(
-                                                    selectedCase.report_date
-                                                ),
-                                            ],
-                                            [
-                                                "STATUS",
-                                                selectedCase.case_status,
-                                            ],
-                                        ])}
-                                    </section>
-
-                                    {/* INCIDENT INFORMATION */}
-
-                                    <section className="mt-8">
-                                        <div className="mb-3">
-                                            <span
-                                                className="
-                                                    block
-                                                    text-[#718078]
-                                                    text-[9px]
-                                                    font-extrabold
-                                                    tracking-[0.13em]
-                                                "
-                                            >
-                                                INCIDENT INFORMATION
-                                            </span>
-
-                                            <div className="mt-1 h-px bg-[#e3e9e5]" />
-                                        </div>
-
-                                        {renderTable([
-                                            ["SITE", selectedCase.site],
-                                            [
-                                                "LOCATION",
-                                                selectedCase.location,
-                                            ],
-                                            [
-                                                "ACTIVITY",
-                                                selectedCase.activity,
-                                            ],
-                                            [
-                                                "EQUIPMENT",
-                                                selectedCase.equipment,
-                                            ],
-                                            [
-                                                "LANGUAGE STYLE",
-                                                selectedCase.language_style,
-                                            ],
-                                            ["HAZARD", selectedCase.hazard],
-                                            [
-                                                "ENERGY SOURCE",
-                                                selectedCase.energy_source,
-                                            ],
-                                            [
-                                                "EXPOSURE",
-                                                selectedCase.exposure,
-                                            ],
-                                        ])}
-                                    </section>
-
-                                    {/* SAFETY INTELLIGENCE */}
-
-                                    <section className="mt-8">
-                                        <div className="mb-3">
-                                            <span
-                                                className="
-                                                    block
-                                                    text-[#718078]
-                                                    text-[9px]
-                                                    font-extrabold
-                                                    tracking-[0.13em]
-                                                "
-                                            >
-                                                SAFETY INTELLIGENCE
-                                            </span>
-
-                                            <div className="mt-1 h-px bg-[#e3e9e5]" />
-                                        </div>
-
-                                        {renderTable([
-                                            [
-                                                "UNSAFE ACT / CONDITION",
-                                                selectedCase.unsafe_act_condition,
-                                            ],
-                                            [
-                                                "BARRIER / CONTROL",
-                                                selectedCase.barrier_or_control,
-                                            ],
-                                            [
-                                                "BARRIER FAILURE MODE",
-                                                selectedCase.barrier_failure_mode,
-                                            ],
-                                            [
-                                                "BARRIER FUNCTION",
-                                                selectedCase.barrier_function,
-                                            ],
-                                            [
-                                                "POTENTIAL CONSEQUENCE",
-                                                selectedCase.potential_consequence,
-                                            ],
-                                        ])}
-                                    </section>
-
-                                    {/* EVENT DESCRIPTION */}
-
-                                    {(hasValue(selectedCase.report_text) ||
-                                        hasValue(selectedCase.actual_outcome) ||
-                                        hasValue(
-                                            selectedCase.immediate_action
-                                        )) && (
-                                            <section className="mt-8">
-                                                <div className="mb-3">
-                                                    <span
-                                                        className="
-                                                        block
-                                                        text-[#718078]
-                                                        text-[9px]
-                                                        font-extrabold
-                                                        tracking-[0.13em]
-                                                    "
-                                                    >
-                                                        EVENT DESCRIPTION
-                                                    </span>
-
-                                                    <div className="mt-1 h-px bg-[#e3e9e5]" />
-                                                </div>
-
-                                                <div className="border border-[#dce5df] rounded-[4px] overflow-hidden">
-
-                                                    {hasValue(
-                                                        selectedCase.report_text
-                                                    ) && (
-                                                            <div
-                                                                className="
-                                                            p-5
-                                                            border-b
-                                                            border-[#e3e9e5]
-                                                            bg-white
-                                                        "
-                                                            >
-                                                                <span
-                                                                    className="
-                                                                block
-                                                                mb-2
-                                                                text-[#718078]
-                                                                text-[9px]
-                                                                font-extrabold
-                                                                tracking-[0.11em]
-                                                            "
-                                                                >
-                                                                    INCIDENT /
-                                                                    OBSERVATION
-                                                                    DESCRIPTION
-                                                                </span>
-
-                                                                <div
-                                                                    className="
-                                                                text-[#46534b]
-                                                                text-[13px]
-                                                                leading-[1.75]
-                                                                whitespace-pre-wrap
-                                                            "
-                                                                >
-                                                                    {
-                                                                        selectedCase.report_text
-                                                                    }
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                    {hasValue(
-                                                        selectedCase.actual_outcome
-                                                    ) && (
-                                                            <div
-                                                                className="
-                                                            p-5
-                                                            border-b
-                                                            border-[#e3e9e5]
-                                                            bg-white
-                                                        "
-                                                            >
-                                                                <span
-                                                                    className="
-                                                                block
-                                                                mb-2
-                                                                text-[#718078]
-                                                                text-[9px]
-                                                                font-extrabold
-                                                                tracking-[0.11em]
-                                                            "
-                                                                >
-                                                                    ACTUAL OUTCOME
-                                                                </span>
-
-                                                                <div
-                                                                    className="
-                                                                text-[#46534b]
-                                                                text-[13px]
-                                                                leading-[1.75]
-                                                                whitespace-pre-wrap
-                                                            "
-                                                                >
-                                                                    {
-                                                                        selectedCase.actual_outcome
-                                                                    }
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                    {hasValue(
-                                                        selectedCase.immediate_action
-                                                    ) && (
-                                                            <div
-                                                                className="
-                                                            p-5
-                                                            bg-white
-                                                        "
-                                                            >
-                                                                <span
-                                                                    className="
-                                                                block
-                                                                mb-2
-                                                                text-[#718078]
-                                                                text-[9px]
-                                                                font-extrabold
-                                                                tracking-[0.11em]
-                                                            "
-                                                                >
-                                                                    IMMEDIATE ACTION
-                                                                </span>
-
-                                                                <div
-                                                                    className="
-                                                                text-[#46534b]
-                                                                text-[13px]
-                                                                leading-[1.75]
-                                                                whitespace-pre-wrap
-                                                            "
-                                                                >
-                                                                    {
-                                                                        selectedCase.immediate_action
-                                                                    }
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                </div>
-                                            </section>
-                                        )}
-
-                                    {/* SUPPORTING EVIDENCE */}
-
-                                    {Array.isArray(
-                                        selectedCase.attachments
-                                    ) &&
-                                        selectedCase.attachments.length >
-                                        0 && (
-                                            <section className="mt-8">
-                                                <div className="mb-3">
-                                                    <span
-                                                        className="
-                                                            block
-                                                            text-[#718078]
-                                                            text-[9px]
-                                                            font-extrabold
-                                                            tracking-[0.13em]
-                                                        "
-                                                    >
-                                                        SUPPORTING EVIDENCE
-                                                    </span>
-
-                                                    <div className="mt-1 h-px bg-[#e3e9e5]" />
-                                                </div>
-
-                                                <div className="border border-[#dce5df] rounded-[4px] overflow-hidden">
-                                                    {selectedCase.attachments.map(
-                                                        (file, index) => (
-                                                            <div
-                                                                key={
-                                                                    file?.name ||
-                                                                    index
-                                                                }
-                                                                className="
-                                                                    flex
-                                                                    items-center
-                                                                    justify-between
-                                                                    gap-4
-                                                                    px-4
-                                                                    py-3.5
-                                                                    border-b
-                                                                    last:border-b-0
-                                                                    border-[#e3e9e5]
-                                                                    bg-white
-                                                                "
-                                                            >
-                                                                <div className="min-w-0">
-                                                                    <div
-                                                                        className="
-                                                                            truncate
-                                                                            text-[#17211b]
-                                                                            text-[13px]
-                                                                            font-semibold
-                                                                        "
-                                                                    >
-                                                                        {file?.name ||
-                                                                            `Attachment ${index +
-                                                                            1
-                                                                            }`}
-                                                                    </div>
-
-                                                                    {file?.size && (
-                                                                        <div
-                                                                            className="
-                                                                                mt-1
-                                                                                text-[#8a958e]
-                                                                                text-[10px]
-                                                                            "
-                                                                        >
-                                                                            {(
-                                                                                file.size /
-                                                                                (1024 *
-                                                                                    1024)
-                                                                            ).toFixed(
-                                                                                2
-                                                                            )}{" "}
-                                                                            MB
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {file?.url && (
-                                                                    <a
-                                                                        href={
-                                                                            file.url
-                                                                        }
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        onClick={(
-                                                                            event
-                                                                        ) =>
-                                                                            event.stopPropagation()
-                                                                        }
-                                                                        className="
-                                                                            shrink-0
-                                                                            text-[#087542]
-                                                                            text-[11px]
-                                                                            font-extrabold
-                                                                            hover:underline
-                                                                        "
-                                                                    >
-                                                                        View →
-                                                                    </a>
-                                                                )}
-                                                            </div>
-                                                        )
-                                                    )}
-                                                </div>
-                                            </section>
-                                        )}
-
-                                    {/* ASSIGNED TEAM */}
-
-                                    {String(
-                                        selectedCase.case_status || ""
-                                    )
-                                        .trim()
-                                        .toLowerCase() === "assigned" &&
-                                        selectedCase.assigned_team && (
-                                            <section className="mt-8">
-                                                <div className="mb-3">
-                                                    <span
-                                                        className="
-                                                            block
-                                                            text-[#718078]
-                                                            text-[9px]
-                                                            font-extrabold
-                                                            tracking-[0.13em]
-                                                        "
-                                                    >
-                                                        ASSIGNMENT
-                                                    </span>
-
-                                                    <div className="mt-1 h-px bg-[#e3e9e5]" />
-                                                </div>
-
-                                                <div
-                                                    className="
-                                                        border
-                                                        border-[#dce5df]
-                                                        rounded-[4px]
-                                                        overflow-hidden
-                                                    "
                                                 >
+                                                    <span
+                                                        className="
+                                                block
+                                                mb-2
+                                                text-[#718078]
+                                                text-[9px]
+                                                font-extrabold
+                                                tracking-[0.12em]
+                                            "
+                                                    >
+                                                        {label}
+                                                    </span>
+
                                                     <div
                                                         className="
-                                                            grid
-                                                            grid-cols-1
-                                                            sm:grid-cols-[220px_1fr]
-                                                        "
+                                                text-[#46534b]
+                                                text-[13px]
+                                                font-semibold
+                                                leading-[1.6]
+                                            "
                                                     >
-                                                        <div
-                                                            className="
-                                                                px-4
-                                                                py-3.5
-                                                                bg-[#f7faf8]
-                                                                text-[#718078]
-                                                                text-[9px]
-                                                                font-extrabold
-                                                                tracking-[0.11em]
-                                                            "
-                                                        >
-                                                            ASSIGNED TEAM
-                                                        </div>
-
-                                                        <div
-                                                            className="
-                                                                px-4
-                                                                py-3.5
-                                                                bg-white
-                                                                text-[#46534b]
-                                                                text-[13px]
-                                                                font-semibold
-                                                            "
-                                                        >
-                                                            {typeof selectedCase.assigned_team ===
-                                                                "string"
-                                                                ? selectedCase.assigned_team
-                                                                : selectedCase
-                                                                    .assigned_team
-                                                                    ?.name ||
-                                                                selectedCase
-                                                                    .assigned_team
-                                                                    ?.team_name ||
-                                                                selectedCase
-                                                                    .assigned_team
-                                                                    ?.teamName ||
-                                                                "Team assigned"}
-                                                        </div>
+                                                        {Array.isArray(
+                                                            value
+                                                        )
+                                                            ? value.join(
+                                                                ", "
+                                                            )
+                                                            : value}
                                                     </div>
                                                 </div>
-                                            </section>
-                                        )}
-                                </div>
-
-                                {/* Footer */}
-
-                                <div
-                                    className="
-                                        flex
-                                        flex-col-reverse
-                                        gap-3
-                                        px-7
-                                        py-5
-                                        border-t
-                                        border-[#e3e9e5]
-                                        bg-[#f7faf8]
-                                        sm:flex-row
-                                        sm:justify-end
-                                    "
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setSelectedCase(null)
-                                        }
-                                        className="
-                                            px-5
-                                            py-3
-                                            rounded-[3px]
-                                            border
-                                            border-[#d5dfd8]
-                                            bg-white
-                                            text-[#59655e]
-                                            text-[12px]
-                                            font-bold
-                                            cursor-pointer
-                                            transition
-                                            hover:bg-[#edf2ee]
-                                        "
-                                    >
-                                        Close
-                                    </button>
-
-                                    {String(
-                                        selectedCase.case_status || ""
-                                    )
-                                        .trim()
-                                        .toLowerCase() !== "assigned" && (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    navigate(
-                                                        `/team-proposal/${selectedCase.report_id}`
-                                                    );
-                                                }}
-                                                className="
-                                                px-5
-                                                py-3
-                                                rounded-[3px]
-                                                border-0
-                                                bg-[#087542]
-                                                text-white
-                                                text-[12px]
-                                                font-extrabold
-                                                cursor-pointer
-                                                transition
-                                                hover:bg-[#075f36]
-                                                hover:-translate-y-0.5
-                                            "
-                                            >
-                                                Submit Team Proposal →
-                                            </button>
+                                            )
                                         )}
                                 </div>
                             </div>
+
+                            {/* Report description */}
+
+                            {selectedCase.report_text &&
+                                selectedCase.report_text
+                                    .trim() !== "" && (
+                                    <div className="mt-7">
+
+                                        <span
+                                            className="
+                                    block
+                                    mb-3
+                                    text-[#718078]
+                                    text-[9px]
+                                    font-extrabold
+                                    tracking-[0.13em]
+                                "
+                                        >
+                                            REPORT DESCRIPTION
+                                        </span>
+
+                                        <div
+                                            className="
+                                    p-5
+                                    rounded-[5px]
+                                    border
+                                    border-[#dce5df]
+                                    bg-white
+                                    text-[#46534b]
+                                    text-[13px]
+                                    leading-[1.75]
+                                "
+                                        >
+                                            {selectedCase.report_text}
+                                        </div>
+                                    </div>
+                                )}
+
+                            {/* Supporting evidence */}
+
+                            {Array.isArray(
+                                selectedCase.attachments
+                            ) &&
+                                selectedCase.attachments.length > 0 && (
+                                    <div className="mt-7">
+
+                                        <span
+                                            className="
+                                    block
+                                    mb-3
+                                    text-[#718078]
+                                    text-[9px]
+                                    font-extrabold
+                                    tracking-[0.13em]
+                                "
+                                        >
+                                            SUPPORTING EVIDENCE
+                                        </span>
+
+                                        <div className="space-y-2">
+                                            {selectedCase.attachments.map(
+                                                (file, index) => (
+                                                    <div
+                                                        key={
+                                                            file?.name ||
+                                                            index
+                                                        }
+                                                        className="
+                                                flex
+                                                items-center
+                                                justify-between
+                                                gap-4
+                                                p-4
+                                                rounded-[5px]
+                                                border
+                                                border-[#dce5df]
+                                                bg-[#f7faf8]
+                                            "
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <div
+                                                                className="
+                                                        truncate
+                                                        text-[#17211b]
+                                                        text-[13px]
+                                                        font-semibold
+                                                    "
+                                                            >
+                                                                {file?.name ||
+                                                                    `Attachment ${index +
+                                                                    1
+                                                                    }`}
+                                                            </div>
+
+                                                            {file?.size && (
+                                                                <div
+                                                                    className="
+                                                            mt-1
+                                                            text-[#8a958e]
+                                                            text-[10px]
+                                                        "
+                                                                >
+                                                                    {(
+                                                                        file.size /
+                                                                        (1024 *
+                                                                            1024)
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}{" "}
+                                                                    MB
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {file?.url && (
+                                                            <a
+                                                                href={
+                                                                    file.url
+                                                                }
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                onClick={(
+                                                                    event
+                                                                ) =>
+                                                                    event.stopPropagation()
+                                                                }
+                                                                className="
+                                                        shrink-0
+                                                        text-[#087542]
+                                                        text-[11px]
+                                                        font-extrabold
+                                                        hover:underline
+                                                    "
+                                                            >
+                                                                View →
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                         </div>
-                    );
-                })()}
+
+                        {/* Assigned team */}
+
+                        {String(selectedCase.case_status || "").trim().toLowerCase() === "assigned" &&
+                            selectedCase.assigned_team && (
+                                <div className="m-7">
+
+                                    <span
+                                        className="
+                                                block
+                                                mb-3
+                                                text-[#718078]
+                                                text-[9px]
+                                                font-extrabold
+                                                tracking-[0.13em]
+                                            "
+                                    >
+                                        ASSIGNED TEAM
+                                    </span>
+
+                                    <div
+                                        className="
+                                                p-5
+                                                rounded-[5px]
+                                                border
+                                                border-[#dce5df]
+                                                bg-[#f7faf8]
+                                                text-[#46534b]
+                                                text-[13px]
+                                                font-semibold
+                                                leading-[1.6]
+                                            "
+                                    >
+                                        {typeof selectedCase.assigned_team === "string"
+                                            ? selectedCase.assigned_team
+                                            : selectedCase.assigned_team?.name ||
+                                            selectedCase.assigned_team?.team_name ||
+                                            selectedCase.assigned_team?.teamName ||
+                                            "Team assigned"}
+                                    </div>
+
+                                </div>
+                            )}
+
+                        {/* Footer */}
+
+                        <div
+                            className="
+                    flex
+                    flex-col-reverse
+                    gap-3
+                    px-7
+                    py-5
+                    border-t
+                    border-[#e3e9e5]
+                    bg-[#f7faf8]
+                    sm:flex-row
+                    sm:justify-end
+                "
+                        >
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setSelectedCase(null)
+                                }
+                                className="
+                        px-5
+                        py-3
+                        rounded-[3px]
+                        border
+                        border-[#d5dfd8]
+                        bg-white
+                        text-[#59655e]
+                        text-[12px]
+                        font-bold
+                        cursor-pointer
+                        transition
+                        hover:bg-[#edf2ee]
+                    "
+                            >
+                                Close
+                            </button>
+
+                            {String(selectedCase.case_status || "").trim().toLowerCase() !== "assigned" && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigate(
+                                            `/team-proposal/${selectedCase.report_id}`
+                                        );
+                                    }}
+                                    className="
+                                        px-5
+                                        py-3
+                                        rounded-[3px]
+                                        border-0
+                                        bg-[#087542]
+                                        text-white
+                                        text-[12px]
+                                        font-extrabold
+                                        cursor-pointer
+                                        transition
+                                        hover:bg-[#075f36]
+                                        hover:-translate-y-0.5
+                                    "
+                                >
+                                    Submit Team Proposal →
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
 
             <Footer />

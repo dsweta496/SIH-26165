@@ -311,17 +311,28 @@ function AdminActiveCases() {
        SIF LABEL
     ========================================================= */
 
-    const getSifLabel = (caseItem) => {
+    const getSifLabel = (report) => {
+        const level = String(report?.sif_level || "")
+            .trim()
+            .toUpperCase();
 
-        if (caseItem?.sif_level) {
-            return caseItem.sif_level;
+        if (
+            level &&
+            level !== "NOT_STATED" &&
+            level !== "NOT STATED"
+        ) {
+            return report.sif_level;
         }
 
-        if (caseItem?.sif_potential) {
+        if (report?.sif_potential === true) {
             return "SIF Potential";
         }
 
-        return "Not classified";
+        if (report?.sif_potential === false) {
+            return "Not SIF Potential";
+        }
+
+        return "Pending classification";
     };
 
     const isEnteredValue = (value) => {
@@ -873,7 +884,7 @@ function AdminActiveCases() {
                                             hover:border-[#b8cec0]
                                             hover:shadow-[0_10px_25px_rgba(20,50,35,0.07)]
 
-                                            md:grid-cols-[1.3fr_1fr_1fr_0.8fr_auto]
+                                            md:grid-cols-[minmax(110px,1.3fr)_minmax(100px,1fr)_minmax(180px,1.6fr)_minmax(90px,0.8fr)_auto]
 
                                             md:items-center
                                         "

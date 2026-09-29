@@ -236,65 +236,20 @@ function Navbar({ variant = "public" }) {
                         cursor-pointer
                     "
                 >
-                    <div
+                    <img
+                        src="/drishti-iap-logo.png"
+                        alt="Oil India Limited — DRISHTI IAP"
                         className="
-                            relative
-                            w-[54px]
-                            h-[62px]
-                            flex
-                            items-center
-                            justify-center
-                            border-l-[5px]
-                            border-b-[5px]
-                            border-[#e31e24]
-                            after:absolute
-                            after:left-0
-                            after:bottom-[-5px]
-                            after:w-[49px]
-                            after:h-[5px]
-                            after:bg-[#087542]
+                            block
+                            h-[86px]
+                            sm:h-[64px]
+                            w-auto
+                            max-w-[230px]
+                            sm:max-w-[285px]
+                            object-contain
+                            object-left
                         "
-                    >
-                        <span
-                            className="
-                                text-[#087542]
-                                text-[14px]
-                                font-black
-                                tracking-[-0.04em]
-                            "
-                        >
-                            OIL
-                        </span>
-                    </div>
-
-                    <div className="hidden sm:block">
-                        <strong
-                            className="
-                                block
-                                text-[#17211b]
-                                text-[18px]
-                                leading-none
-                                font-extrabold
-                                tracking-[-0.025em]
-                            "
-                        >
-                            OIL INDIA LIMITED
-                        </strong>
-
-                        <span
-                            className="
-                                block
-                                mt-[6px]
-                                text-[#087542]
-                                text-[9px]
-                                leading-none
-                                font-extrabold
-                                tracking-[0.18em]
-                            "
-                        >
-                            SAFETY INTELLIGENCE
-                        </span>
-                    </div>
+                    />
                 </button>
 
                 {!isAdminPage &&

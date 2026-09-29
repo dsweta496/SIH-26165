@@ -5,8 +5,7 @@ function AdminSidebar() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const [mobileOpen, setMobileOpen] =
-        useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     const navigationItems = [
         {
@@ -22,12 +21,17 @@ function AdminSidebar() {
         {
             label: "Active Cases",
             path: "/admin/cases",
-            icon: "⌁",
+            icon: "◌",
         },
         {
             label: "Pending Solutions",
             path: "/admin/solutions",
             icon: "✓",
+        },
+        {
+            label: "Precursor Intelligence",
+            path: "/admin/precursors",
+            icon: "⌁",
         },
         {
             label: "Past Case History",
@@ -36,18 +40,15 @@ function AdminSidebar() {
         },
     ];
 
-
     const handleNavigation = (path) => {
         setMobileOpen(false);
         navigate(path);
     };
 
-
     const handleDashboard = () => {
         setMobileOpen(false);
         navigate("/");
     };
-
 
     const isActive = (path) => {
         if (path === "/admin") {
@@ -56,7 +57,6 @@ function AdminSidebar() {
 
         return location.pathname.startsWith(path);
     };
-
 
     return (
         <>
@@ -67,21 +67,17 @@ function AdminSidebar() {
             <button
                 type="button"
                 onClick={() =>
-                    setMobileOpen(
-                        (value) => !value
-                    )
+                    setMobileOpen((value) => !value)
                 }
                 className="
                     fixed
                     left-4
                     top-[92px]
-
                     z-50
 
                     flex
                     h-10
                     w-10
-
                     items-center
                     justify-center
 
@@ -116,13 +112,10 @@ function AdminSidebar() {
                 <button
                     type="button"
                     aria-label="Close navigation"
-                    onClick={() =>
-                        setMobileOpen(false)
-                    }
+                    onClick={() => setMobileOpen(false)}
                     className="
                         fixed
                         inset-0
-
                         z-40
 
                         border-0
@@ -142,9 +135,7 @@ function AdminSidebar() {
             <aside
                 className={`
                     fixed
-
                     left-0
-
                     top-[80px]
                     bottom-[100px]
 
@@ -171,9 +162,10 @@ function AdminSidebar() {
                     lg:translate-x-0
                     lg:shadow-none
 
-                    ${mobileOpen
-                        ? "translate-x-0"
-                        : "-translate-x-full"
+                    ${
+                        mobileOpen
+                            ? "translate-x-0"
+                            : "-translate-x-full"
                     }
                 `}
             >
@@ -257,126 +249,119 @@ function AdminSidebar() {
 
                     <div className="space-y-1">
 
-                        {navigationItems.map(
-                            (item) => {
-                                const active =
-                                    isActive(
-                                        item.path
-                                    );
+                        {navigationItems.map((item) => {
+                            const active = isActive(item.path);
 
-                                return (
-                                    <button
-                                        key={
-                                            item.path
+                            return (
+                                <button
+                                    key={item.path}
+                                    type="button"
+                                    onClick={() =>
+                                        handleNavigation(item.path)
+                                    }
+                                    className={`
+                                        relative
+
+                                        w-full
+
+                                        flex
+                                        items-center
+
+                                        gap-3
+
+                                        px-3
+                                        py-3
+
+                                        rounded-[3px]
+
+                                        border-0
+
+                                        text-left
+
+                                        text-[11px]
+                                        font-bold
+
+                                        cursor-pointer
+
+                                        transition
+
+                                        ${
+                                            active
+                                                ? `
+                                                    bg-white
+                                                    text-[#087542]
+                                                    shadow-[0_3px_12px_rgba(20,50,35,0.06)]
+                                                `
+                                                : `
+                                                    bg-transparent
+                                                    text-[#66736b]
+                                                    hover:bg-white/70
+                                                    hover:text-[#087542]
+                                                `
                                         }
-                                        type="button"
-                                        onClick={() =>
-                                            handleNavigation(
-                                                item.path
-                                            )
-                                        }
+                                    `}
+                                >
+
+                                    {/* Active indicator */}
+
+                                    {active && (
+                                        <span
+                                            className="
+                                                absolute
+
+                                                left-0
+                                                top-1/2
+
+                                                -translate-y-1/2
+
+                                                w-[3px]
+                                                h-[22px]
+
+                                                rounded-r-full
+
+                                                bg-[#e31e24]
+                                            "
+                                        />
+                                    )}
+
+
+                                    {/* Icon */}
+
+                                    <span
                                         className={`
-                                            relative
-
-                                            w-full
+                                            w-7
+                                            h-7
 
                                             flex
                                             items-center
+                                            justify-center
 
-                                            gap-3
-
-                                            px-3
-                                            py-3
+                                            shrink-0
 
                                             rounded-[3px]
 
-                                            border-0
+                                            text-[13px]
 
-                                            text-left
-
-                                            text-[11px]
-                                            font-bold
-
-                                            cursor-pointer
-
-                                            transition
-
-                                            ${active
-                                                ? `
-                                                        bg-white
-                                                        text-[#087542]
-                                                        shadow-[0_3px_12px_rgba(20,50,35,0.06)]
-                                                    `
-                                                : `
-                                                        bg-transparent
-                                                        text-[#66736b]
-                                                        hover:bg-white/70
-                                                        hover:text-[#087542]
-                                                    `
+                                            ${
+                                                active
+                                                    ? "bg-[#eaf4ee] text-[#087542]"
+                                                    : "bg-[#edf2ee] text-[#7c8881]"
                                             }
                                         `}
                                     >
-
-                                        {/* Active red indicator */}
-
-                                        {active && (
-                                            <span
-                                                className="
-                                                    absolute
-
-                                                    left-0
-                                                    top-1/2
-
-                                                    -translate-y-1/2
-
-                                                    w-[3px]
-                                                    h-[22px]
-
-                                                    rounded-r-full
-
-                                                    bg-[#e31e24]
-                                                "
-                                            />
-                                        )}
+                                        {item.icon}
+                                    </span>
 
 
-                                        {/* Icon */}
+                                    {/* Label */}
 
-                                        <span
-                                            className={`
-                                                w-7
-                                                h-7
+                                    <span>
+                                        {item.label}
+                                    </span>
 
-                                                flex
-                                                items-center
-                                                justify-center
-
-                                                rounded-[3px]
-
-                                                text-[13px]
-
-                                                ${active
-                                                    ? "bg-[#eaf4ee] text-[#087542]"
-                                                    : "bg-[#edf2ee] text-[#7c8881]"
-                                                }
-                                            `}
-                                        >
-                                            {
-                                                item.icon
-                                            }
-                                        </span>
-
-
-                                        <span>
-                                            {
-                                                item.label
-                                            }
-                                        </span>
-
-                                    </button>
-                                );
-                            }
-                        )}
+                                </button>
+                            );
+                        })}
 
                     </div>
 
@@ -419,9 +404,7 @@ function AdminSidebar() {
 
                     <button
                         type="button"
-                        onClick={
-                            handleDashboard
-                        }
+                        onClick={handleDashboard}
                         className="
                             w-full
 
@@ -462,6 +445,8 @@ function AdminSidebar() {
                                 flex
                                 items-center
                                 justify-center
+
+                                shrink-0
 
                                 rounded-[3px]
 
@@ -537,7 +522,6 @@ function AdminSidebar() {
                             <strong
                                 className="
                                     block
-
                                     truncate
 
                                     text-[#17211b]

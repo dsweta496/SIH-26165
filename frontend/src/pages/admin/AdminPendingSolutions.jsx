@@ -1072,14 +1072,11 @@ function AdminPendingSolutions() {
                                             <span
                                                 className="
                                                     block
-
-                                                    mt-2
-
                                                     text-[#4f5d55]
 
                                                     text-[13px]
                                                     font-semibold
-                                                "
+                                                                "
                                             >
                                                 {
                                                     solution.report_id
@@ -1111,8 +1108,6 @@ function AdminPendingSolutions() {
                                             <span
                                                 className="
                                                     block
-
-                                                    mt-2
 
                                                     text-[#4f5d55]
 
@@ -1150,8 +1145,6 @@ function AdminPendingSolutions() {
                                             <span
                                                 className="
                                                     block
-
-                                                    mt-2
 
                                                     text-[#4f5d55]
 

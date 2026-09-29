@@ -354,7 +354,9 @@ function TeamProposal() {
         <div
             className="
                 min-h-screen
-                bg-[#087542]
+                bg-[#003b2a]
+                bg-[linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(135deg,#003b2a_0%,#00583e_48%,#001f16_100%)]
+                bg-[size:48px_48px,48px_48px,100%_100%]
                 px-4
                 py-8
                 sm:px-6

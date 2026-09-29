@@ -1112,7 +1112,7 @@ function AdminPastCaseHistory() {
 
                                             hover:bg-[#f9fbfa]
 
-                                            md:grid-cols-[1.2fr_1.2fr_1.3fr_1fr_auto]
+                                            md:grid-cols-[minmax(110px,1.3fr)_minmax(100px,1fr)_minmax(180px,1.6fr)_minmax(90px,0.8fr)_auto]
 
                                             md:items-center
                                             md:gap-5
@@ -1181,13 +1181,13 @@ function AdminPastCaseHistory() {
                                             <span
                                                 className="
                                                     block
-
-                                                    mt-1
-                                                    md:mt-0
-
-                                                    text-[#4f5d55]
-
-                                                    text-[13px]
+    mt-2
+    min-w-0
+    break-words
+    whitespace-normal
+    text-[#4f5d55]
+    text-[13px]
+    font-semibold
                                                 "
                                             >
                                                 {
@@ -1220,14 +1220,13 @@ function AdminPastCaseHistory() {
                                             <span
                                                 className="
                                                     block
-
-                                                    mt-1
-                                                    md:mt-0
-
-                                                    text-[#4f5d55]
-
-                                                    text-[13px]
-                                                    font-semibold
+    mt-2
+    min-w-0
+    break-words
+    whitespace-normal
+    text-[#4f5d55]
+    text-[13px]
+    font-semibold
                                                 "
                                             >
                                                 {
@@ -1260,13 +1259,13 @@ function AdminPastCaseHistory() {
                                             <span
                                                 className="
                                                     block
-
-                                                    mt-1
-                                                    md:mt-0
-
-                                                    text-[#4f5d55]
-
-                                                    text-[13px]
+    mt-2
+    min-w-0
+    break-words
+    whitespace-normal
+    text-[#4f5d55]
+    text-[13px]
+    font-semibold
                                                 "
                                             >
                                                 {

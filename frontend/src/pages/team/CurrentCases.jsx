@@ -5,6 +5,8 @@ import Footer from "../../components/Footer";
 import TeamSidebar from "../../components/TeamSidebar";
 import SubmitSolutionModal
     from "../../components/SubmitSolutionModal";
+import AISafetyIntelligence
+    from "../../components/AISafetyIntelligence";
 
 import {
     getTeamCurrentCases,
@@ -954,6 +956,16 @@ const CurrentCases = () => {
                                                     ["Actual Outcome", caseDetails.report?.actual_outcome],
                                                 ]}
                                             />
+
+
+                                            {/* AI SAFETY INTELLIGENCE */}
+
+                                            <section className="mb-8">
+                                                <AISafetyIntelligence
+                                                    report={caseDetails.report}
+                                                    reportId={caseDetails.report?.report_id}
+                                                />
+                                            </section>
 
 
                                             {/* FACILITY / IMPACT */}

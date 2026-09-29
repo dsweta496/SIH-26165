@@ -26,10 +26,12 @@ const getAdminOverview = async (req, res) => {
             }),
 
             ProblemReport.countDocuments({
+                review_status: "approved",
                 case_status: "active",
             }),
 
             ProblemReport.countDocuments({
+                review_status: "approved",
                 case_status: "assigned",
             }),
 

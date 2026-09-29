@@ -217,15 +217,11 @@ function Admin() {
     const reports =
         overview?.reports || {};
 
-    const cases =
-        overview?.cases || {};
-
     const proposals =
         overview?.proposals || {};
 
     const solutions =
         overview?.solutions || {};
-
 
     const reviewQueue = reports.pending_review || 0;
 
@@ -457,7 +453,7 @@ function Admin() {
                                 type="button"
                                 onClick={() =>
                                     navigate("/admin/history")
-                                }                                                            
+                                }
                                 className="
             group
 
@@ -621,7 +617,7 @@ function Admin() {
                 tracking-[-0.06em]
             "
                                 >
-                                    {cases.active ?? 0}
+                                    {reports.assigned ?? 0}
                                 </strong>
 
                                 <p
@@ -633,7 +629,7 @@ function Admin() {
                 text-[10px]
             "
                                 >
-                                    {cases.assigned ?? 0}{" "}
+                                    {reports.assigned ?? 0}{" "}
                                     to be assigned
                                 </p>
 
@@ -739,7 +735,7 @@ function Admin() {
                 text-[10px]
             "
                                 >
-                                    Reports awaiting review 
+                                    Reports awaiting review
                                 </p>
 
                                 <span
