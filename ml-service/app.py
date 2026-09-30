@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from inference.udyam_startup import load_udyam_ai
+from inference.drishti_startup import load_drishti_ai
 
 
 class ReportRequest(BaseModel):
@@ -16,15 +16,18 @@ ml_system = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global ml_system
-    print("[Udyam AI] Loading model and inference pipeline...")
-    ml_system = load_udyam_ai()
-    print("[Udyam AI] Model loaded successfully.")
+
+    print("[Drishti AI] Loading model and inference pipeline...")
+    ml_system = load_drishti_ai()
+    print("[Drishti AI] Model loaded successfully.")
+
     yield
+
     ml_system = None
 
 
 app = FastAPI(
-    title="Udyam AI ML Service",
+    title="Drishti AI ML Service",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -49,5 +52,5 @@ def analyze_report(request: ReportRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        print(f"[Udyam AI] Inference error: {exc}")
+        print(f"[Drishti AI] Inference error: {exc}")
         raise HTTPException(status_code=500, detail="ML inference failed") from exc
